@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Windows;
+using System.Windows.Input;
 using VPet.Mod.LLMChat.Providers;
 using VPet_Simulator.Windows.Interface;
 
@@ -18,6 +20,19 @@ namespace VPet.Mod.LLMChat
         public LLMTalkBox(LLMChatPlugin plugin) : base(plugin)
         {
             this.plugin = plugin;
+            // 右クリック等でツールバー(この入力欄を含む)が表示されたら、自動で入力欄にフォーカスする
+            IsVisibleChanged += LLMTalkBox_IsVisibleChanged;
+        }
+
+        private void LLMTalkBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (!IsVisible)
+                return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Focusable = true;
+                MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            }));
         }
 
         public override string APIName => "LLM Chat (Claude/ChatGPT/DeepSeek)";
