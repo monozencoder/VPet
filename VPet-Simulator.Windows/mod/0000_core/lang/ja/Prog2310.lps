@@ -1,0 +1,50 @@
+统计面板#統計パネル:|
+搜索统计#統計を検索:|
+数量#数量:|
+详情面板#詳細パネル:|
+购买次数#購入回数:|
+统计#統計:|
+0_feel#気分が0の回数:|
+0_f_sd#気分とのどの渇きが同時に0の回数:|
+autogift#自動プレゼント購入回数:|
+bb_food#特別商品への総支出:|
+0_sd_sf#満腹度とのどの渇きが同時に0の回数:|
+0_strengthdrink#のどの渇きが0:|
+0_strengthfood#満腹度が0:|
+100_all#全ステータス満タンの回数:|
+ill_nomoney#お金がない状態での病気:|
+sleep_time#睡眠時間:|
+autobuy#自動購入回数:|
+bb_drink#飲み物の合計費用:|
+bb_drug_exp#薬による合計経験値:|
+bb_drug#薬の合計支出:|
+bb_functional#機能性商品の合計支出:|
+bb_gift#プレゼントの合計費用:|
+bb_gift_like#プレゼントによる合計好感度:|
+bb_meal#食事の合計:|
+bb_snack#おやつの合計:|
+betterbuy#Betterbuy合計:|
+buytimes#Betterbuy購入回数:|
+level#レベル:|
+level_g_money#レベルがお金より大きい:|
+likability#好感度:|
+menu_pop#タスクバーを開いた回数:|
+money#お金:|
+move_length#移動距離 (px):|
+music#音楽に合わせて踊った回数:|
+open_times#ゲーム起動回数:|
+say_exp_p#会話による経験値増加:|
+say_exp_d#会話による経験値減少:|
+say_like_p#会話による好感度増加:|
+say_like_d#会話による好感度減少:|
+say_money_p#会話によるお金増加:|
+say_money_d#会話によるお金減少:|
+say_times#発話回数:|
+single_profit_exp#1回の仕事あたりの獲得経験値:|
+single_profit_money#1回の仕事あたりの獲得金額:|
+sleep_time#睡眠時間 (秒):|
+study_time#勉強時間 (秒):|
+total_time#合計時間 (秒):|
+touch_body#体を触った回数:|
+touch_head#頭を触った回数:|
+work_time#仕事時間 (秒):|

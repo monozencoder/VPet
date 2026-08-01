@@ -1,0 +1,15 @@
+al_stream_invite_other#フレンドの{0}が{hostname}をゲームに誘いました:|
+al_stream_invite_vpet#{0}からゲストの招待を受け取りました:|
+al_take_autofood#{name}が自分用に食べ物を購入: {0} x {1}:|
+al_take_autodrink#{name}が自分用に飲み物を購入: {0} x {1}:|
+al_take_autofeel#{name}が自分用にプレゼントを購入: {0} x {1}:|
+al_take_friend#フレンドが{name}に{0} x {1}を購入しました:|
+al_take_betterbuy#{hostname}が{name}に{0} x {1}を購入しました:|
+al_work_start#{name}が{0}を開始しました:|
+al_work_end#{name}が{0}を完了しました。合計時間: {2}分:|
+al_photo_unlock#写真を解放: {0}:|
+i_schedulenote#対応する仕事/学習機関の日程を契約すると、仕事/学習パネルで独立してスケジュールを選んで完了できます。\n時間を適切に配置してスタートをクリックすると、ロリスは機関からのリマインドに従って対応する仕事/学習を時間通りに完了します:|
+al_petsay#{name}が話す: {0}:|
+al_hostsay#{hostname}が話す: {0}:|
+al_take_item#{hostname}が{0}を{name}に使用しました:|
+al_console#コンソール: {0}:|
