@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<OutputType>Library</OutputType>
+		<RootNamespace>VPet.Mod.LLMChat</RootNamespace>
+		<AssemblyName>VPet.Mod.LLMChat</AssemblyName>
+		<LangVersion>latest</LangVersion>
+		<Nullable>disable</Nullable>
+		<UseWPF>true</UseWPF>
+		<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+
+		<AssemblyTitle>LLM Chat (Claude / ChatGPT / DeepSeek)</AssemblyTitle>
+		<Description>VPet MOD: キャラクターとClaude/ChatGPT/DeepSeek等のLLMで会話する</Description>
+		<Product>VPet.Mod.LLMChat</Product>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- 本体側で既にロード済みのアセンブリを利用するため出力にはコピーしない -->
+		<ProjectReference Include="..\VPet-Simulator.Core\VPet-Simulator.Core.csproj" Private="false" />
+		<ProjectReference Include="..\VPet-Simulator.Windows.Interface\VPet-Simulator.Windows.Interface.csproj" Private="false" />
+	</ItemGroup>
+
+	<!--
+		ビルド成果物をVPet本体のmodフォルダへ配置する。
+		mklink.batが作るはずのシンボリックリンク(bin\...\mod -> ソースのmodフォルダ)が
+		存在しない/機能していない環境では、本体の実行ファイルが読みに行く
+		bin\<Platform>\<Configuration>\net8.0-windows\mod\ が実体の伴わない別フォルダになるため、
+		念のためソースツリーと主要なビルド出力先の両方へ直接コピーする。
+	-->
+	<PropertyGroup>
+		<ModName>1200_LLMChat</ModName>
+		<SourceModRoot>$(ProjectDir)..\VPet-Simulator.Windows\mod\$(ModName)\</SourceModRoot>
+	</PropertyGroup>
+	<ItemGroup>
+		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x64\Debug\net8.0-windows\mod\$(ModName)\" />
+		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x86\Debug\net8.0-windows\mod\$(ModName)\" />
+		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x64\Release\net8.0-windows\mod\$(ModName)\" />
+		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x86\Release\net8.0-windows\mod\$(ModName)\" />
+	</ItemGroup>
+	<Target Name="DeployToModFolder" AfterTargets="Build">
+		<ItemGroup>
+			<ModDeployFiles Include="$(TargetDir)VPet.Mod.LLMChat.dll" />
+			<ModDeployFiles Include="$(TargetDir)VPet.Mod.LLMChat.pdb" Condition="Exists('$(TargetDir)VPet.Mod.LLMChat.pdb')" />
+		</ItemGroup>
+
+		<!-- ソースツリー側(mklink.bat想定の正規配置場所) -->
+		<MakeDir Directories="$(SourceModRoot)plugin" Condition="!Exists('$(SourceModRoot)plugin')" />
+		<Copy SourceFiles="@(ModDeployFiles)" DestinationFolder="$(SourceModRoot)plugin" SkipUnchangedFiles="true" />
+
+		<!-- 本体の実際のビルド出力フォルダ(既にビルド済みのものだけを対象) -->
+		<ItemGroup>
+			<ExistingModBinRoot Include="@(ModBinRoot)" Condition="Exists('%(Identity)..\..\')" />
+		</ItemGroup>
+		<MakeDir Directories="%(ExistingModBinRoot.Identity)plugin" Condition="!Exists('%(ExistingModBinRoot.Identity)plugin')" />
+		<Copy SourceFiles="@(ModDeployFiles)" DestinationFolder="%(ExistingModBinRoot.Identity)plugin" SkipUnchangedFiles="true" Condition="'%(ExistingModBinRoot.Identity)' != ''" />
+		<Copy SourceFiles="$(SourceModRoot)info.lps" DestinationFolder="%(ExistingModBinRoot.Identity)" SkipUnchangedFiles="true" Condition="'%(ExistingModBinRoot.Identity)' != '' and Exists('$(SourceModRoot)info.lps')" />
+	</Target>
+
+</Project>

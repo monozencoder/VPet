@@ -1,0 +1,63 @@
+<Window x:Class="VPet.Mod.LLMChat.SettingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LLM Chat 設定" Height="560" Width="420"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="プロバイダー" Margin="0,0,0,4" FontWeight="Bold"/>
+        <ComboBox Grid.Row="1" Name="cbProvider" Margin="0,0,0,10" SelectionChanged="cbProvider_SelectionChanged">
+            <ComboBoxItem Content="Claude (Anthropic)" Tag="Claude"/>
+            <ComboBoxItem Content="ChatGPT (OpenAI)" Tag="OpenAI"/>
+            <ComboBoxItem Content="DeepSeek" Tag="DeepSeek"/>
+            <ComboBoxItem Content="カスタム (OpenAI互換API)" Tag="Custom"/>
+        </ComboBox>
+
+        <TextBlock Grid.Row="2" Text="モデル名" Margin="0,0,0,4" FontWeight="Bold"/>
+        <TextBox Grid.Row="3" Name="tbModel" Margin="0,0,0,10"/>
+
+        <StackPanel Grid.Row="4" Name="spCustomEndpoint" Margin="0,0,0,10">
+            <TextBlock Text="カスタムエンドポイントURL (OpenAI互換 /chat/completions)" Margin="0,0,0,4" FontWeight="Bold"/>
+            <TextBox Name="tbCustomEndpoint"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Margin="0,0,0,10">
+            <TextBlock Name="tbApiKeyLabel" Text="APIキー" Margin="0,0,0,4" FontWeight="Bold"/>
+            <PasswordBox Name="pbApiKey"/>
+            <TextBlock Text="※空欄のまま保存すると、既存のAPIキーはそのまま保持されます" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="6" Margin="0,0,0,10">
+            <CheckBox Name="cbProactiveEnabled" Content="ときどき自分から話しかける" FontWeight="Bold"/>
+            <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                <TextBlock Text="間隔(分):" VerticalAlignment="Center"/>
+                <TextBox Name="tbProactiveInterval" Width="50" Margin="6,0,16,0"/>
+                <TextBlock Text="確率(%):" VerticalAlignment="Center"/>
+                <TextBox Name="tbProactiveChance" Width="50" Margin="6,0,0,0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="7" Margin="0,0,0,10">
+            <TextBlock Text="システムプロンプト(キャラクター設定・任意)" Margin="0,0,0,4" FontWeight="Bold"/>
+            <TextBox Name="tbSystemPrompt" AcceptsReturn="True" TextWrapping="Wrap"
+                      VerticalScrollBarVisibility="Auto" Height="120" VerticalContentAlignment="Top"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Name="btnCancel" Content="キャンセル" Width="80" Margin="0,0,8,0" Click="btnCancel_Click"/>
+            <Button Name="btnSave" Content="保存" Width="80" Click="btnSave_Click" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
