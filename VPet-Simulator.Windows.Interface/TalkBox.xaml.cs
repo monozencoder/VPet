@@ -127,9 +127,16 @@ namespace VPet_Simulator.Windows.Interface
         /// </summary>
         public abstract void Setting();
 
+        /// <summary>
+        /// マイクボタンがクリックされた時の処理。音声入力に対応する場合はオーバーライドする(既定では何もしない)
+        /// </summary>
+        protected virtual void OnMicClick(object sender, RoutedEventArgs e) { }
+
+        private void btnMic_Click(object sender, RoutedEventArgs e) => OnMicClick(sender, e);
+
         private void tbTalk_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter && e.KeyboardDevice.Modifiers.HasFlag(ModifierKeys.Control))
+            if (e.Key == Key.Enter && !e.KeyboardDevice.Modifiers.HasFlag(ModifierKeys.Shift))
             {
                 Send_Click(sender, e);
                 e.Handled = true;

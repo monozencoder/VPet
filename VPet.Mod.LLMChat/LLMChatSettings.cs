@@ -36,6 +36,20 @@ namespace VPet.Mod.LLMChat
         /// <summary>間隔が経過した時に実際に話しかける確率(%)</summary>
         public int ProactiveChatChancePercent { get; set; } = 40;
 
+        /// <summary>VOICEVOXで返信を読み上げるか</summary>
+        public bool VoiceEnabled { get; set; } = false;
+        /// <summary>VOICEVOX ENGINEのエンドポイント(事前に起動しておく必要あり)</summary>
+        public string VoiceEndpoint { get; set; } = "http://127.0.0.1:50021";
+        /// <summary>読み上げに使うVOICEVOXの話者スタイルID(設定画面の「話者一覧を取得」で選択)</summary>
+        public int VoiceSpeakerId { get; set; } = 3;
+
+        /// <summary>マイクボタンで音声入力(OpenAI Whisper)を使うか</summary>
+        public bool VoiceInputEnabled { get; set; } = false;
+        /// <summary>音声入力に使うWhisperのモデル名</summary>
+        public string VoiceInputModel { get; set; } = "whisper-1";
+        /// <summary>音声入力用APIキーのCredentialStoreキー(チャットのプロバイダー設定とは独立)</summary>
+        public static string VoiceInputCredentialKey => "OpenAI_Whisper";
+
         private const string FileName = "settings.json";
 
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions

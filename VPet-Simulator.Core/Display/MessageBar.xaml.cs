@@ -186,7 +186,7 @@ namespace VPet_Simulator.Core
             timeleft = Function.ComCheck(text) * 10 + 20;
             ShowTimer.Start(); EndTimer.Stop(); CloseTimer.Stop();
             this.Visibility = Visibility.Visible;
-            Opacity = .8;
+            Opacity = 1;
             this.graphName = graphName;
             if (msgContent != null)
             {
@@ -219,7 +219,7 @@ namespace VPet_Simulator.Core
             EndTimer.Stop();
             CloseTimer.Stop();
             this.Visibility = Visibility.Visible;
-            Opacity = .8;
+            Opacity = 1;
             graphName = sayInfoWithStream.GraphName;
 
             var msgcontent = sayInfoWithStream.MsgContent ?? (string.IsNullOrWhiteSpace(sayInfoWithStream.Desc)
@@ -323,7 +323,7 @@ namespace VPet_Simulator.Core
         {
             EndTimer.Stop();
             CloseTimer.Stop();
-            this.Opacity = .8;
+            this.Opacity = 1;
         }
 
         public void Border_MouseLeave(object sender, MouseEventArgs e)

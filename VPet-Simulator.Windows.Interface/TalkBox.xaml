@@ -11,6 +11,8 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="4*" />
                 <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="5" />
                 <ColumnDefinition Width="1*" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -22,11 +24,15 @@
                     Height="Auto" pu:TextBoxHelper.Watermark="{ll:Str 和桌宠说}" FontSize="30" AcceptsReturn="True"
                     TextWrapping="WrapWithOverflow" PreviewKeyDown="tbTalk_KeyDown"
                     InputMethod.IsInputMethodEnabled="True" />
+            <Button x:Name="btnMic" pu:ButtonHelper.CornerRadius="4" Content="🎙" BorderThickness="2"
+                    Background="{DynamicResource SecondaryLight}" Grid.Column="2" Width="50"
+                    BorderBrush="{DynamicResource DARKPrimaryDarker}" FontSize="24" ToolTip="{ll:Str '音声入力'}"
+                    Click="btnMic_Click" x:FieldModifier="public" Visibility="Collapsed" />
             <Button x:Name="btnSend" pu:ButtonHelper.CornerRadius="4" Content="{ll:Str '发送'}" BorderThickness="2"
-                    Background="{DynamicResource SecondaryLight}" Grid.Column="2"
-                    BorderBrush="{DynamicResource DARKPrimaryDarker}" FontSize="30" ToolTip="{ll:Str '按 Ctrl+Enter 发送'}"
+                    Background="{DynamicResource SecondaryLight}" Grid.Column="4"
+                    BorderBrush="{DynamicResource DARKPrimaryDarker}" FontSize="30" ToolTip="{ll:Str '按 Enter 发送，Shift+Enter 换行'}"
                     Click="Send_Click" x:FieldModifier="public" />
-            <Grid x:Name="PublicGrid" Grid.Row="2" Grid.ColumnSpan="3" x:FieldModifier="public" />
+            <Grid x:Name="PublicGrid" Grid.Row="2" Grid.ColumnSpan="5" x:FieldModifier="public" />
         </Grid>
     </Border>
 </UserControl>

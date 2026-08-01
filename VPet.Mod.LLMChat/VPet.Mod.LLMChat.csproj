@@ -20,6 +20,8 @@
 		<!-- 本体側で既にロード済みのアセンブリを利用するため出力にはコピーしない -->
 		<ProjectReference Include="..\VPet-Simulator.Core\VPet-Simulator.Core.csproj" Private="false" />
 		<ProjectReference Include="..\VPet-Simulator.Windows.Interface\VPet-Simulator.Windows.Interface.csproj" Private="false" />
+		<!-- VPet-Simulator.Windows(本体)が既に同バージョンをロード済みのため出力にはコピーしない -->
+		<PackageReference Include="NAudio" Version="2.2.1" Private="false" />
 	</ItemGroup>
 
 	<!--
