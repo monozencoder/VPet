@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using VPet.Mod.LLMChat.Providers;
 using VPet.Mod.LLMChat.SpeechToText;
 using VPet.Mod.LLMChat.Voice;
+using VPet_Simulator.Core;
 using VPet_Simulator.Windows.Interface;
 
 namespace VPet.Mod.LLMChat
@@ -62,22 +64,28 @@ namespace VPet.Mod.LLMChat
             history.Add(userMessage);
             TrimHistory();
 
+            // 生成されながら表示するため、ストリーミング用のSayInfoに逐次テキストを流し込む
+            var sayInfo = new SayInfoWithStream();
+            DisplayThinkToSayRnd(sayInfo);
+
             try
             {
                 var provider = BuildProvider();
-                var reply = await provider.ChatAsync(plugin.Settings.SystemPrompt, history, cts.Token).ConfigureAwait(true);
+                var reply = await provider.ChatStreamAsync(plugin.Settings.SystemPrompt, history, delta => sayInfo.UpdateText(delta), cts.Token).ConfigureAwait(true);
+                sayInfo.FinishGenerate();
                 history.Add(new ChatMessage("assistant", reply));
                 voicePlayer.Speak(reply);
-                DisplayThinkToSayRnd(reply);
             }
             catch (OperationCanceledException)
             {
                 // 新しいメッセージに割り込まれたので、返事を待たずに終わったこの発言は履歴から取り除く
+                sayInfo.FinishGenerate();
                 history.Remove(userMessage);
             }
             catch (Exception ex)
             {
                 // 失敗した発言は履歴から取り除き、再送信できるようにする
+                sayInfo.FinishGenerate();
                 history.Remove(userMessage);
                 DisplayThinkToSayRnd($"エラーが発生しました: {ex.Message}");
             }
@@ -123,7 +131,9 @@ namespace VPet.Mod.LLMChat
             try
             {
                 var provider = BuildProvider();
-                var reply = await provider.ChatAsync(plugin.Settings.SystemPrompt, history, cts.Token).ConfigureAwait(true);
+                // 自発的な話しかけはユーザーが待っているわけではないため、ストリーミング表示はせず
+                // 従来通り全文確定後にまとめて表示する(失敗時も静かに何もしない挙動を維持)
+                var reply = await provider.ChatStreamAsync(plugin.Settings.SystemPrompt, history, _ => { }, cts.Token).ConfigureAwait(true);
                 history.Add(new ChatMessage("assistant", reply));
                 voicePlayer.Speak(reply);
                 DisplayThinkToSayRnd(reply);
@@ -159,6 +169,22 @@ namespace VPet.Mod.LLMChat
                 StartRecording();
         }
 
+        private const string MicIdleIcon = "🎙";
+        private const string MicRecordingIcon = "⏹";
+        private const string MicProcessingIcon = "⏳";
+
+        private const int MicStartBeepHz = 880;
+        private const int MicStopBeepHz = 440;
+        private const int MicBeepDurationMs = 100;
+
+        /// <summary>設定で有効な場合のみ、マイクの開始/停止を知らせる短いビープ音を鳴らす(UIをブロックしないよう別スレッドで再生)</summary>
+        private void PlayMicBeep(int frequencyHz)
+        {
+            if (!plugin.Settings.MicSoundEnabled)
+                return;
+            Task.Run(() => Console.Beep(frequencyHz, MicBeepDurationMs));
+        }
+
         private void StartRecording()
         {
             try
@@ -167,7 +193,9 @@ namespace VPet.Mod.LLMChat
                 recorder = new AudioRecorder();
                 recorder.Start();
                 isRecording = true;
-                btnMic.Content = "⏹";
+                btnMic.Content = MicRecordingIcon;
+                btnMic.ToolTip = "録音を停止";
+                PlayMicBeep(MicStartBeepHz);
             }
             catch (Exception ex)
             {
@@ -178,8 +206,11 @@ namespace VPet.Mod.LLMChat
         private async void StopRecordingAndTranscribe()
         {
             isRecording = false;
-            btnMic.Content = "🎙";
+            // 録音停止操作が反映されたことが分かるよう、待機中とは別のアイコンで「認識中」を明示する
+            btnMic.Content = MicProcessingIcon;
+            btnMic.ToolTip = "音声を認識中...";
             btnMic.IsEnabled = false;
+            PlayMicBeep(MicStopBeepHz);
             try
             {
                 var wav = recorder?.StopAndGetWav();
@@ -216,6 +247,8 @@ namespace VPet.Mod.LLMChat
             }
             finally
             {
+                btnMic.Content = MicIdleIcon;
+                btnMic.ToolTip = "音声入力";
                 btnMic.IsEnabled = true;
             }
         }

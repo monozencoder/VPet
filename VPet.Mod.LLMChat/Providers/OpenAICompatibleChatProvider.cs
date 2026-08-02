@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -11,12 +12,14 @@ using System.Threading.Tasks;
 namespace VPet.Mod.LLMChat.Providers
 {
     /// <summary>
-    /// OpenAI Chat Completions API 互換のプロバイダー。
+    /// OpenAI Chat Completions API 互換のプロバイダー。ストリーミング(SSE)で応答を受け取る。
     /// ChatGPT(OpenAI)・DeepSeek・および将来のOpenAI互換API(Gemini互換エンドポイント等)を
     /// BaseUrl/Model/ApiKeyのみの差し替えでカバーする汎用実装。
     /// </summary>
     public class OpenAICompatibleChatProvider : ILlmChatProvider
     {
+        private static readonly HttpClient SharedClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+
         private readonly string endpoint;
         private readonly string apiKey;
         private readonly string model;
@@ -30,7 +33,7 @@ namespace VPet.Mod.LLMChat.Providers
             this.maxTokens = maxTokens;
         }
 
-        public async Task<string> ChatAsync(string systemPrompt, IReadOnlyList<ChatMessage> history, CancellationToken cancellationToken)
+        public async Task<string> ChatStreamAsync(string systemPrompt, IReadOnlyList<ChatMessage> history, Action<string> onDelta, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(endpoint))
                 throw new InvalidOperationException("APIのエンドポイントURLが設定されていません");
@@ -48,20 +51,20 @@ namespace VPet.Mod.LLMChat.Providers
             {
                 Model = model,
                 MaxTokens = maxTokens,
+                Stream = true,
                 Messages = messages,
             };
 
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
             using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
             request.Headers.Add("Authorization", $"Bearer {apiKey}");
             var json = JsonSerializer.Serialize(requestBody, JsonOptions.Default);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            var responseText = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var response = await SharedClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
+                var responseText = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 string message;
                 try
                 {
@@ -75,11 +78,42 @@ namespace VPet.Mod.LLMChat.Providers
                 throw new InvalidOperationException($"API错误({(int)response.StatusCode}): {message}");
             }
 
-            var result = JsonSerializer.Deserialize<OpenAIResponse>(responseText, JsonOptions.Default);
-            var text = result?.Choices?.FirstOrDefault()?.Message?.Content;
-            if (string.IsNullOrEmpty(text))
+            var fullText = new StringBuilder();
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var reader = new StreamReader(stream);
+
+            while (!reader.EndOfStream)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(line) || !line.StartsWith("data: "))
+                    continue;
+
+                var payload = line.Substring("data: ".Length);
+                if (payload == "[DONE]")
+                    break;
+
+                using var doc = JsonDocument.Parse(payload);
+                if (!doc.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                    continue;
+
+                var choice = choices[0];
+                if (choice.TryGetProperty("delta", out var delta)
+                    && delta.TryGetProperty("content", out var contentProp)
+                    && contentProp.ValueKind == JsonValueKind.String)
+                {
+                    var text = contentProp.GetString();
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        fullText.Append(text);
+                        onDelta(text);
+                    }
+                }
+            }
+
+            if (fullText.Length == 0)
                 throw new InvalidOperationException("応答が空でした");
-            return text;
+            return fullText.ToString();
         }
 
         private class OpenAIRequest
@@ -90,6 +124,8 @@ namespace VPet.Mod.LLMChat.Providers
             public List<OpenAIMessage> Messages { get; set; }
             [JsonPropertyName("max_tokens")]
             public int MaxTokens { get; set; }
+            [JsonPropertyName("stream")]
+            public bool Stream { get; set; }
         }
 
         private class OpenAIMessage
@@ -98,18 +134,6 @@ namespace VPet.Mod.LLMChat.Providers
             public string Role { get; set; }
             [JsonPropertyName("content")]
             public string Content { get; set; }
-        }
-
-        private class OpenAIResponse
-        {
-            [JsonPropertyName("choices")]
-            public List<OpenAIChoice> Choices { get; set; }
-        }
-
-        private class OpenAIChoice
-        {
-            [JsonPropertyName("message")]
-            public OpenAIMessage Message { get; set; }
         }
 
         private class OpenAIErrorResponse

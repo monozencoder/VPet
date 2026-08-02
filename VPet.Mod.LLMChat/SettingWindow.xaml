@@ -72,6 +72,7 @@
         <StackPanel Grid.Row="8" Margin="0,0,0,10">
             <CheckBox Name="cbVoiceInputEnabled" Content="マイクボタンで音声入力する (OpenAI Whisper)" FontWeight="Bold"/>
             <CheckBox Name="cbVoiceInputAutoSend" Content="認識結果を確認せず自動的に送信する" Margin="20,6,0,0"/>
+            <CheckBox Name="cbMicSoundEnabled" Content="マイクの開始/停止で音を鳴らす" Margin="20,6,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
                 <TextBlock Text="モデル:" VerticalAlignment="Center"/>
                 <TextBox Name="tbVoiceInputModel" Width="140" Margin="6,0,0,0"/>

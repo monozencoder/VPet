@@ -51,6 +51,8 @@ namespace VPet.Mod.LLMChat
         public bool VoiceInputAutoSend { get; set; } = true;
         /// <summary>音声入力用APIキーのCredentialStoreキー(チャットのプロバイダー設定とは独立)</summary>
         public static string VoiceInputCredentialKey => "OpenAI_Whisper";
+        /// <summary>マイクの録音開始/停止時に短い効果音を鳴らすか</summary>
+        public bool MicSoundEnabled { get; set; } = true;
 
         private const string FileName = "settings.json";
 
