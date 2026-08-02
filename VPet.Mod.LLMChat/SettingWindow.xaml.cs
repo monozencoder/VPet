@@ -46,6 +46,7 @@ namespace VPet.Mod.LLMChat
             cbVoiceSpeaker.SelectedIndex = 0;
 
             cbVoiceInputEnabled.IsChecked = settings.VoiceInputEnabled;
+            cbVoiceInputAutoSend.IsChecked = settings.VoiceInputAutoSend;
             tbVoiceInputModel.Text = settings.VoiceInputModel;
             var hasVoiceInputKey = CredentialStore.Exists(LLMChatSettings.VoiceInputCredentialKey);
             tbVoiceInputKeyLabel.Text = hasVoiceInputKey ? "Whisper用 OpenAI APIキー (設定済み・変更する場合のみ入力)" : "Whisper用 OpenAI APIキー";
@@ -97,6 +98,7 @@ namespace VPet.Mod.LLMChat
             settings.VoiceSpeakerId = SelectedVoiceSpeakerId;
 
             settings.VoiceInputEnabled = cbVoiceInputEnabled.IsChecked == true;
+            settings.VoiceInputAutoSend = cbVoiceInputAutoSend.IsChecked == true;
             if (!string.IsNullOrWhiteSpace(tbVoiceInputModel.Text))
                 settings.VoiceInputModel = tbVoiceInputModel.Text.Trim();
 

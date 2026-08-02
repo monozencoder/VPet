@@ -51,7 +51,12 @@ namespace VPet_Simulator.Windows.Interface
         /// </summary>
         public abstract string APIName { get; }
 
-        private void Send_Click(object sender, RoutedEventArgs e)
+        private void Send_Click(object sender, RoutedEventArgs e) => SubmitTalk();
+
+        /// <summary>
+        /// 入力欄の内容を送信する(マイク入力後の自動送信など、送信ボタン以外からも呼び出せるようにする)
+        /// </summary>
+        protected void SubmitTalk()
         {
             if (string.IsNullOrEmpty(tbTalk.Text))
             {
@@ -59,7 +64,6 @@ namespace VPet_Simulator.Windows.Interface
             }
             var cont = tbTalk.Text;
             tbTalk.Text = "";
-            MainPlugin.MW.Main.ToolBar.Visibility = Visibility.Collapsed;
 
             Task.Run(() => Responded(cont));
         }
@@ -140,7 +144,6 @@ namespace VPet_Simulator.Windows.Interface
             {
                 Send_Click(sender, e);
                 e.Handled = true;
-                MainPlugin.MW.Main.ToolBar.Visibility = Visibility.Collapsed;
                 return;
             }
             if (tbTalk.Text.Length > 0)

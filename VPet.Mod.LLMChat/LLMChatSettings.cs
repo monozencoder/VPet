@@ -47,6 +47,8 @@ namespace VPet.Mod.LLMChat
         public bool VoiceInputEnabled { get; set; } = false;
         /// <summary>音声入力に使うWhisperのモデル名</summary>
         public string VoiceInputModel { get; set; } = "whisper-1";
+        /// <summary>音声認識結果を確認なしで自動的に送信するか</summary>
+        public bool VoiceInputAutoSend { get; set; } = true;
         /// <summary>音声入力用APIキーのCredentialStoreキー(チャットのプロバイダー設定とは独立)</summary>
         public static string VoiceInputCredentialKey => "OpenAI_Whisper";
 

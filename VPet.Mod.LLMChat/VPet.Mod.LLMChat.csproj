@@ -10,6 +10,11 @@
 		<UseWPF>true</UseWPF>
 		<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+		<!--
+			OutputType=LibraryのSDKプロジェクトは既定でNuGetパッケージの依存DLLを出力にコピーしないため、
+			MODとして本体プロセスにロードされるこのプロジェクトではNAudio等の依存を確実に同梱するよう有効化する
+		-->
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
 		<AssemblyTitle>LLM Chat (Claude / ChatGPT / DeepSeek)</AssemblyTitle>
 		<Description>VPet MOD: キャラクターとClaude/ChatGPT/DeepSeek等のLLMで会話する</Description>
@@ -20,8 +25,12 @@
 		<!-- 本体側で既にロード済みのアセンブリを利用するため出力にはコピーしない -->
 		<ProjectReference Include="..\VPet-Simulator.Core\VPet-Simulator.Core.csproj" Private="false" />
 		<ProjectReference Include="..\VPet-Simulator.Windows.Interface\VPet-Simulator.Windows.Interface.csproj" Private="false" />
-		<!-- VPet-Simulator.Windows(本体)が既に同バージョンをロード済みのため出力にはコピーしない -->
-		<PackageReference Include="NAudio" Version="2.2.1" Private="false" />
+		<!--
+			本体がNAudioを参照しているとはいえ、WaveInEvent等が含まれるNAudio.WinMM.dllは
+			本体の通常動作では実際にロードされないことがあるため、確実に動くようこのMOD自身の
+			plugin フォルダにも同梱する(Private=true、既定値のため明示指定なし)
+		-->
+		<PackageReference Include="NAudio" Version="2.2.1" />
 	</ItemGroup>
 
 	<!--
@@ -42,9 +51,14 @@
 		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x86\Release\net8.0-windows\mod\$(ModName)\" />
 	</ItemGroup>
 	<Target Name="DeployToModFolder" AfterTargets="Build">
+		<!--
+			VPet.Mod.LLMChat本体だけでなく、NAudio等このMODが実際に必要とする依存DLLも
+			まとめてpluginフォルダへ配置する(本体側が同名アセンブリを未ロードのままでも動くように)。
+			VPet-Simulator.Core/Windows.Interfaceは Private="false" のため出力に含まれない。
+		-->
 		<ItemGroup>
-			<ModDeployFiles Include="$(TargetDir)VPet.Mod.LLMChat.dll" />
-			<ModDeployFiles Include="$(TargetDir)VPet.Mod.LLMChat.pdb" Condition="Exists('$(TargetDir)VPet.Mod.LLMChat.pdb')" />
+			<ModDeployFiles Include="$(TargetDir)*.dll" />
+			<ModDeployFiles Include="$(TargetDir)*.pdb" />
 		</ItemGroup>
 
 		<!-- ソースツリー側(mklink.bat想定の正規配置場所) -->

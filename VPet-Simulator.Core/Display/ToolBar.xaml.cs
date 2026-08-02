@@ -21,7 +21,6 @@ namespace VPet_Simulator.Core
     {
         Main m;
         public Timer CloseTimer;
-        bool onFocus = false;
         Timer closePanelTimer;
 
         public ToolBar(Main m)
@@ -263,13 +262,8 @@ namespace VPet_Simulator.Core
 
         private void Closetimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            if (onFocus)
-            {
-                onFocus = false;
-                CloseTimer.Start();
-            }
-            else
-                Dispatcher.Invoke(() => this.Visibility = Visibility.Collapsed);
+            // 数秒操作がないと自動的に閉じてしまうと、チャット等がすぐ消えて使いにくいため、
+            // 自動クローズはせず、右クリックやメニュー操作等の明示的な動作でのみ閉じるようにする
         }
         /// <summary>
         /// ToolBar显示事件
@@ -283,10 +277,6 @@ namespace VPet_Simulator.Core
                 Panel.SetZIndex(this, m.UIGrid.Children.Count);
             }
             Visibility = Visibility.Visible;
-            if (CloseTimer.Enabled)
-                onFocus = true;
-            else
-                CloseTimer.Start();
         }
 
         private void UserControl_MouseEnter(object sender, MouseEventArgs e)

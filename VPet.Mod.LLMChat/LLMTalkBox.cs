@@ -20,6 +20,7 @@ namespace VPet.Mod.LLMChat
         private readonly VoicevoxSpeechPlayer voicePlayer;
         private AudioRecorder recorder;
         private bool isRecording;
+        private CancellationTokenSource activeRequestCts;
         private const int MaxHistoryMessages = 40;
 
         public LLMTalkBox(LLMChatPlugin plugin) : base(plugin)
@@ -52,25 +53,53 @@ namespace VPet.Mod.LLMChat
 
         public override async void Responded(string text)
         {
+            InterruptCurrentReply();
+            var cts = new CancellationTokenSource();
+            activeRequestCts = cts;
+
             DisplayThink();
-            history.Add(new ChatMessage("user", text));
+            var userMessage = new ChatMessage("user", text);
+            history.Add(userMessage);
             TrimHistory();
 
             try
             {
                 var provider = BuildProvider();
-                var reply = await provider.ChatAsync(plugin.Settings.SystemPrompt, history, CancellationToken.None).ConfigureAwait(true);
+                var reply = await provider.ChatAsync(plugin.Settings.SystemPrompt, history, cts.Token).ConfigureAwait(true);
                 history.Add(new ChatMessage("assistant", reply));
                 voicePlayer.Speak(reply);
                 DisplayThinkToSayRnd(reply);
             }
+            catch (OperationCanceledException)
+            {
+                // 新しいメッセージに割り込まれたので、返事を待たずに終わったこの発言は履歴から取り除く
+                history.Remove(userMessage);
+            }
             catch (Exception ex)
             {
                 // 失敗した発言は履歴から取り除き、再送信できるようにする
-                if (history.Count > 0)
-                    history.RemoveAt(history.Count - 1);
+                history.Remove(userMessage);
                 DisplayThinkToSayRnd($"エラーが発生しました: {ex.Message}");
             }
+            finally
+            {
+                if (activeRequestCts == cts)
+                    activeRequestCts = null;
+                cts.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// 相手(キャラクター)が今話している内容を中断する。新しくメッセージを送る/録音を始める際に呼び出す。
+        /// Responded()はバックグラウンドスレッドから実行されるため、UI要素の操作はDispatcher経由で行う。
+        /// また、MsgBar.ForceClose()は内部タイマーを破棄してしまい以後の表示が壊れるため使わず、
+        /// Visibilityを直接畳んで即座に隠すだけに留める(内部状態は次のShow()呼び出しで正しくリセットされる)。
+        /// </summary>
+        private void InterruptCurrentReply()
+        {
+            activeRequestCts?.Cancel();
+            voicePlayer.Stop();
+            Dispatcher.Invoke(() => MainPlugin.MW.Main.MsgBar.Visibility = Visibility.Collapsed);
         }
 
         /// <summary>
@@ -82,22 +111,32 @@ namespace VPet.Mod.LLMChat
             if (!CredentialStore.Exists(plugin.Settings.CredentialKey))
                 return;
 
+            activeRequestCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            activeRequestCts = cts;
+
             DisplayThink();
-            history.Add(new ChatMessage("user", "（少し時間が経ちました。あなたから飼い主に一言、自然に話しかけてください。挨拶や近況、思ったことなど、短く自然な一言で構いません。）"));
+            var userMessage = new ChatMessage("user", "（少し時間が経ちました。あなたから飼い主に一言、自然に話しかけてください。挨拶や近況、思ったことなど、短く自然な一言で構いません。）");
+            history.Add(userMessage);
             TrimHistory();
 
             try
             {
                 var provider = BuildProvider();
-                var reply = await provider.ChatAsync(plugin.Settings.SystemPrompt, history, CancellationToken.None).ConfigureAwait(true);
+                var reply = await provider.ChatAsync(plugin.Settings.SystemPrompt, history, cts.Token).ConfigureAwait(true);
                 history.Add(new ChatMessage("assistant", reply));
                 voicePlayer.Speak(reply);
                 DisplayThinkToSayRnd(reply);
             }
             catch
             {
-                if (history.Count > 0)
-                    history.RemoveAt(history.Count - 1);
+                history.Remove(userMessage);
+            }
+            finally
+            {
+                if (activeRequestCts == cts)
+                    activeRequestCts = null;
+                cts.Dispose();
             }
         }
 
@@ -124,6 +163,7 @@ namespace VPet.Mod.LLMChat
         {
             try
             {
+                InterruptCurrentReply();
                 recorder = new AudioRecorder();
                 recorder.Start();
                 isRecording = true;
@@ -159,8 +199,15 @@ namespace VPet.Mod.LLMChat
                 if (!string.IsNullOrWhiteSpace(text))
                 {
                     tbTalk.Text = text.Trim();
-                    tbTalk.CaretIndex = tbTalk.Text.Length;
-                    tbTalk.Focus();
+                    if (plugin.Settings.VoiceInputAutoSend)
+                    {
+                        SubmitTalk();
+                    }
+                    else
+                    {
+                        tbTalk.CaretIndex = tbTalk.Text.Length;
+                        tbTalk.Focus();
+                    }
                 }
             }
             catch (Exception ex)
