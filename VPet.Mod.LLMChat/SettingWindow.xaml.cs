@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using VPet.Mod.LLMChat.Providers;
 using VPet.Mod.LLMChat.Voice;
 
 namespace VPet.Mod.LLMChat
@@ -33,6 +36,7 @@ namespace VPet.Mod.LLMChat
             if (cbProvider.SelectedItem == null)
                 cbProvider.SelectedIndex = 0;
 
+            UpdateModelChoices();
             tbModel.Text = settings.Model;
             tbCustomEndpoint.Text = settings.CustomEndpoint;
             tbSystemPrompt.Text = settings.SystemPrompt;
@@ -145,9 +149,71 @@ namespace VPet.Mod.LLMChat
                 return;
             // プロバイダーを切り替えたら、前のプロバイダーのモデル名が残らないよう常に既定値へ更新する
             // (LoadFromSettings実行中は、この直後に保存済みのModelで上書きされるため問題ない)
+            UpdateModelChoices();
             tbModel.Text = LLMChatSettings.DefaultModelFor(SelectedProvider);
             UpdateApiKeyLabel();
             UpdateCustomEndpointVisibility();
+        }
+
+        /// <summary>選択中プロバイダーでよく使われるモデル名をドロップダウンの候補として表示する(一覧にない名前も自由入力可能)</summary>
+        private void UpdateModelChoices()
+        {
+            tbModel.Items.Clear();
+            foreach (var name in LLMChatSettings.KnownModelsFor(SelectedProvider))
+                tbModel.Items.Add(name);
+        }
+
+        /// <summary>
+        /// 現在入力中のプロバイダー/モデル名/APIキーで実際に短い応答を1回リクエストし、
+        /// モデル名が存在するか・APIキーが有効かをその場で確認する(保存はしない)
+        /// </summary>
+        private async void btnTestModel_Click(object sender, RoutedEventArgs e)
+        {
+            btnTestModel.IsEnabled = false;
+            tbModelTestStatus.Foreground = Brushes.Gray;
+            tbModelTestStatus.Text = "テスト中...";
+            try
+            {
+                var provider = SelectedProvider;
+                var model = tbModel.Text?.Trim();
+                if (string.IsNullOrWhiteSpace(model))
+                    throw new InvalidOperationException("モデル名が未入力です");
+
+                var apiKey = !string.IsNullOrEmpty(pbApiKey.Password)
+                    ? pbApiKey.Password
+                    : CredentialStore.Load(provider.ToString()) ?? string.Empty;
+                if (string.IsNullOrEmpty(apiKey))
+                    throw new InvalidOperationException("APIキーが未設定です");
+
+                var testSettings = new LLMChatSettings
+                {
+                    Provider = provider,
+                    Model = model,
+                    CustomEndpoint = tbCustomEndpoint.Text?.Trim() ?? "",
+                };
+                //思考(推論)モデルは本文の前に思考過程で数十トークン消費することがあるため、ある程度余裕を持たせる
+                var chatProvider = ProviderFactory.Create(testSettings, apiKey, maxTokens: 64);
+                var history = new List<ChatMessage> { new ChatMessage("user", "Hi") };
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+                await chatProvider.ChatStreamAsync("", history, _ => { }, cts.Token);
+
+                tbModelTestStatus.Foreground = Brushes.Green;
+                tbModelTestStatus.Text = "✓ 接続成功。このモデルは利用できます";
+            }
+            catch (OperationCanceledException)
+            {
+                tbModelTestStatus.Foreground = Brushes.Red;
+                tbModelTestStatus.Text = "接続失敗: タイムアウトしました";
+            }
+            catch (Exception ex)
+            {
+                tbModelTestStatus.Foreground = Brushes.Red;
+                tbModelTestStatus.Text = $"接続失敗: {ex.Message}";
+            }
+            finally
+            {
+                btnTestModel.IsEnabled = true;
+            }
         }
 
         private void btnSave_Click(object sender, RoutedEventArgs e)

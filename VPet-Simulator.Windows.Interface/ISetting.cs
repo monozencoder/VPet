@@ -190,6 +190,11 @@ namespace VPet_Simulator.Windows.Interface
         bool HideFromTaskControl { get; set; }
 
         /// <summary>
+        /// 获取或设置点击桌宠图像的透明区域时，是否将点击穿透到后方的窗口
+        /// </summary>
+        bool PixelClickThrough { get; set; }
+
+        /// <summary>
         /// 读写自定义游戏设置(给mod准备的接口)
         /// </summary>
         /// <param name="lineName">游戏设置</param>

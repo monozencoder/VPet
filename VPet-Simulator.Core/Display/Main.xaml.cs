@@ -623,5 +623,67 @@ namespace VPet_Simulator.Core
                 Display(GraphType.SideHide_Right_Rise, AnimatType.C_End, () => Display(GraphType.SideHide_Right_Main, AnimatType.B_Loop, DisplayBLoopingForce));
             }
         }
+
+        /// <summary>
+        /// 判断屏幕坐标(设备无关像素)是否落在需要正常接收点击的内容上,用于点击穿透判定。
+        /// 先做常规(基于包围盒)的命中测试: 命中工具栏/按钮/消息框等桌宠贴图以外的UI时,始终视为不透明(照常接收点击)。
+        /// 只有命中的是桌宠贴图本身时,才进一步按该像素的alpha值判断是否透明。
+        /// 无法判断时保守地视为不透明,避免误穿透导致点不到桌宠或UI
+        /// </summary>
+        /// <param name="screenPoint">屏幕坐标(设备无关像素)</param>
+        public bool IsOpaqueAtScreenPoint(Point screenPoint)
+        {
+            if (!IsVisible)
+                return true;
+
+            Point local;
+            DependencyObject hitVisual;
+            try
+            {
+                local = MainGrid.PointFromScreen(screenPoint);
+                hitVisual = VisualTreeHelper.HitTest(MainGrid, local)?.VisualHit;
+            }
+            catch
+            {
+                return true;
+            }
+
+            if (hitVisual == null)
+                return false; //该点没有任何可交互内容(包括没有Background的空白容器),可以穿透
+
+            if (hitVisual == PetGrid.Child)
+                return IsImageOpaqueAt(PetGrid.Child as System.Windows.Controls.Image, local);
+            if (PetGrid2.Visibility == Visibility.Visible && hitVisual == PetGrid2.Child)
+                return IsImageOpaqueAt(PetGrid2.Child as System.Windows.Controls.Image, local);
+
+            //命中了桌宠贴图以外的其他可交互UI(工具栏/按钮/消息框等),按原有行为正常接收点击
+            return true;
+        }
+
+        private static bool IsImageOpaqueAt(System.Windows.Controls.Image img, Point p)
+        {
+            if (!(img?.Source is System.Windows.Media.Imaging.BitmapSource source))
+                return true;
+            double w = img.Width > 0 ? img.Width : source.PixelWidth;
+            double h = img.Height > 0 ? img.Height : source.PixelHeight;
+            if (p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h)
+                return false;
+            if (source.Format.BitsPerPixel != 32)
+                return true;
+
+            int px = Math.Min(source.PixelWidth - 1, Math.Max(0, (int)(p.X / w * source.PixelWidth)));
+            int py = Math.Min(source.PixelHeight - 1, Math.Max(0, (int)(p.Y / h * source.PixelHeight)));
+
+            var pixel = new byte[4];
+            try
+            {
+                source.CopyPixels(new Int32Rect(px, py, 1, 1), pixel, 4, 0);
+            }
+            catch
+            {
+                return true;
+            }
+            return pixel[3] > 10;
+        }
     }
 }

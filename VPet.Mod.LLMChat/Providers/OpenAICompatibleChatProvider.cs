@@ -79,6 +79,7 @@ namespace VPet.Mod.LLMChat.Providers
             }
 
             var fullText = new StringBuilder();
+            bool sawReasoningOnly = false;
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             using var reader = new StreamReader(stream);
 
@@ -98,21 +99,35 @@ namespace VPet.Mod.LLMChat.Providers
                     continue;
 
                 var choice = choices[0];
-                if (choice.TryGetProperty("delta", out var delta)
-                    && delta.TryGetProperty("content", out var contentProp)
-                    && contentProp.ValueKind == JsonValueKind.String)
+                if (choice.TryGetProperty("delta", out var delta))
                 {
-                    var text = contentProp.GetString();
-                    if (!string.IsNullOrEmpty(text))
+                    if (delta.TryGetProperty("content", out var contentProp) && contentProp.ValueKind == JsonValueKind.String)
                     {
-                        fullText.Append(text);
-                        onDelta(text);
+                        var text = contentProp.GetString();
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            fullText.Append(text);
+                            onDelta(text);
+                        }
+                    }
+                    //DeepSeek-Reasoner等の思考モデルは、本文(content)の前にreasoning_contentで思考過程を先に流す。
+                    //思考内容は会話には表示しないが、これが来ていれば接続自体は成功しており、
+                    //本文が空なのはmax_tokensが思考の途中で尽きたためと判断できる
+                    if (delta.TryGetProperty("reasoning_content", out var reasoningProp)
+                        && reasoningProp.ValueKind == JsonValueKind.String
+                        && !string.IsNullOrEmpty(reasoningProp.GetString()))
+                    {
+                        sawReasoningOnly = true;
                     }
                 }
             }
 
             if (fullText.Length == 0)
+            {
+                if (sawReasoningOnly)
+                    throw new InvalidOperationException("モデルが思考中にトークン上限(max_tokens)に達し、本文が生成されませんでした。max_tokensを増やすか、しばらくしてから再度お試しください");
                 throw new InvalidOperationException("応答が空でした");
+            }
             return fullText.ToString();
         }
 

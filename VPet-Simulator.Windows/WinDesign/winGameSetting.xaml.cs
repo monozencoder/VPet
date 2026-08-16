@@ -113,6 +113,7 @@ namespace VPet_Simulator.Windows
 
             HitThroughBox.IsChecked = mw.Set.HitThrough;
             PetHelperBox.IsChecked = mw.Set.PetHelper;
+            SwitchPixelClickThrough.IsChecked = mw.Set.PixelClickThrough;
 
             if (mw.Set.StartRecordLast == true)
             {
@@ -1730,6 +1731,13 @@ namespace VPet_Simulator.Windows
                 return;
             mw.Set.HideFromTaskControl = SwitchHideFromTaskControl.IsChecked == true;
             ButtonRestartGraph.Visibility = Visibility.Visible;
+        }
+
+        private void SwitchPixelClickThrough_Checked(object sender, RoutedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            mw.Set.PixelClickThrough = SwitchPixelClickThrough.IsChecked == true;
         }
 
 

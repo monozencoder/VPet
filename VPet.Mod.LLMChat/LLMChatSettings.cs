@@ -14,6 +14,8 @@ namespace VPet.Mod.LLMChat
         OpenAI,
         DeepSeek,
         Custom,
+        //既存の設定ファイルはenumを数値のまま保存しているため、Provider列挙値は必ず末尾に追加すること
+        Kimi,
     }
 
     /// <summary>
@@ -121,7 +123,21 @@ namespace VPet.Mod.LLMChat
             LlmProviderKind.Claude => "claude-opus-5",
             LlmProviderKind.OpenAI => "gpt-4o-mini",
             LlmProviderKind.DeepSeek => "deepseek-v4-flash",
+            LlmProviderKind.Kimi => "kimi-k2-0905-preview",
             _ => "",
+        };
+
+        /// <summary>
+        /// 選択中プロバイダーでよく使われるモデル名の候補一覧(設定画面のドロップダウン用)。
+        /// APIの仕様変更で古くなる可能性があるため、一覧にない名前も自由に入力できる
+        /// </summary>
+        public static string[] KnownModelsFor(LlmProviderKind provider) => provider switch
+        {
+            LlmProviderKind.Claude => new[] { "claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-haiku-4-5-20251001" },
+            LlmProviderKind.OpenAI => new[] { "gpt-4o-mini", "gpt-4o", "gpt-4.1", "gpt-4.1-mini", "o4-mini" },
+            LlmProviderKind.DeepSeek => new[] { "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner" },
+            LlmProviderKind.Kimi => new[] { "kimi-k2-0905-preview", "kimi-k2-turbo-preview", "kimi-latest", "moonshot-v1-8k" },
+            _ => Array.Empty<string>(),
         };
     }
 }

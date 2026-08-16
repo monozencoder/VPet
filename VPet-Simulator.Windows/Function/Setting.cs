@@ -149,6 +149,14 @@ namespace VPet_Simulator.Windows
             set => SetBool("hitthrough", value);
         }
         /// <summary>
+        /// 点击桌宠图像的透明区域时，是否将点击穿透到后方的窗口(默认开启)
+        /// </summary>
+        public bool PixelClickThrough
+        {
+            get => !this["gameconfig"].GetBool("disablepixelclickthrough");
+            set => this["gameconfig"].SetBool("disablepixelclickthrough", !value);
+        }
+        /// <summary>
         /// 上次清理缓存日期
         /// </summary>
         public DateTime LastCacheDate

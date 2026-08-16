@@ -24,11 +24,25 @@
             <ComboBoxItem Content="Claude (Anthropic)" Tag="Claude"/>
             <ComboBoxItem Content="ChatGPT (OpenAI)" Tag="OpenAI"/>
             <ComboBoxItem Content="DeepSeek" Tag="DeepSeek"/>
+            <ComboBoxItem Content="Kimi (Moonshot AI)" Tag="Kimi"/>
             <ComboBoxItem Content="カスタム (OpenAI互換API)" Tag="Custom"/>
         </ComboBox>
 
         <TextBlock Grid.Row="2" Text="モデル名" Margin="0,0,0,4" FontWeight="Bold"/>
-        <TextBox Grid.Row="3" Name="tbModel" Margin="0,0,0,10"/>
+        <Grid Grid.Row="3" Margin="0,0,0,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0" Name="tbModel" IsEditable="True"/>
+            <Button Grid.Column="1" Name="btnTestModel" Content="接続テスト" Width="90" Margin="6,0,0,0" Click="btnTestModel_Click"/>
+            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Name="tbModelTestStatus" Margin="0,4,0,0"
+                    Foreground="Gray" FontSize="11" TextWrapping="Wrap"/>
+        </Grid>
 
         <StackPanel Grid.Row="4" Name="spCustomEndpoint" Margin="0,0,0,10">
             <TextBlock Text="カスタムエンドポイントURL (OpenAI互換 /chat/completions)" Margin="0,0,0,4" FontWeight="Bold"/>

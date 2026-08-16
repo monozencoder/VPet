@@ -16,3 +16,6 @@
 为桌宠整体启用透明度#Enable Transparency for Entire Desktop Pet:|
 鼠标穿透透明度#Mouse-Penetration Transparency:|
 仅在鼠标穿透时启用透明度功能#Enable Transparency Only When Mouse-Penetrating:|
+透明区域穿透#Click-Through Transparent Area:|
+点击桌宠图像外的透明区域时穿透到后方窗口#Pass Clicks Through to the Window Behind When Clicking Transparent Areas Outside the Desktop Pet Image:|
+点击桌宠图像以外的透明区域时,点击将穿透到后方的窗口,而不是被桌宠拦截#When you click a transparent area outside the desktop pet image, the click will pass through to the window behind instead of being intercepted by the desktop pet:|

@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
-using System.Threading.Tasks;
 using VPet.Mod.LLMChat.Voice;
 
 namespace VPet.Mod.LLMChat.AiVoiceBridge
@@ -62,28 +59,15 @@ namespace VPet.Mod.LLMChat.AiVoiceBridge
 
             ctrl.Initialize(hosts[0]);
             var justStarted = string.Equals(ctrl.Status.ToString(), "NotRunning", StringComparison.Ordinal);
-            using var minimizeCts = new CancellationTokenSource();
-            Task minimizeTask = Task.CompletedTask;
             if (justStarted)
             {
                 // 未起動だった場合のみこちらでA.I.VOICE Editorを起動する。ユーザーが手動で
-                // 開いていた場合は触らないが、自動起動の場合はチャットのたびに画面に出てきて
-                // 邪魔にならないよう最小化する(SaveAudioToFile等はウィンドウ状態と無関係に動作する)。
-                // 起動シーケンス中はスプラッシュ→本ウィンドウと入れ替わるため、接続完了まで繰り返し最小化し続ける
+                // 開いていた場合は触らない
                 ctrl.StartHost();
-                minimizeTask = Task.Run(() => KeepMinimizingEditorWindow(minimizeCts.Token));
             }
-            try
-            {
-                // 起動直後はEditor側のホストサービス初期化がまだ終わっておらずConnect()が失敗することがあるため、
-                // 自分で起動した場合は接続できるようになるまでリトライする(既に起動済みなら1回で足りるはず)
-                Connect(ctrl, justStarted ? TimeSpan.FromSeconds(60) : TimeSpan.Zero);
-            }
-            finally
-            {
-                minimizeCts.Cancel();
-                minimizeTask.Wait();
-            }
+            // 起動直後はEditor側のホストサービス初期化がまだ終わっておらずConnect()が失敗することがあるため、
+            // 自分で起動した場合は接続できるようになるまでリトライする(既に起動済みなら1回で足りるはず)
+            Connect(ctrl, justStarted ? TimeSpan.FromSeconds(60) : TimeSpan.Zero);
             try
             {
                 switch (command)
@@ -131,30 +115,6 @@ namespace VPet.Mod.LLMChat.AiVoiceBridge
                 {
                     Thread.Sleep(1000);
                 }
-            }
-        }
-
-        private const int SW_MINIMIZE = 6;
-
-        [DllImport("user32.dll")]
-        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        /// <summary>
-        /// A.I.VOICE Editorの本来のメインウィンドウを見つけ次第最小化し、接続完了までポーリングを続ける。
-        /// 起動シーケンス中はスプラッシュ画面→本来のメインウィンドウと入れ替わるため一度だけでは足りないが、
-        /// スプラッシュ画面自体を最小化すると起動シーケンスがそこで止まってしまう(実機で確認済み)ため、
-        /// タイトルが"Splash Screen"の間は何もせず、本来のウィンドウが出てきてから最小化する
-        /// </summary>
-        private static void KeepMinimizingEditorWindow(CancellationToken token)
-        {
-            while (!token.IsCancellationRequested)
-            {
-                foreach (var proc in Process.GetProcessesByName("AIVoiceEditor"))
-                {
-                    if (proc.MainWindowHandle != IntPtr.Zero && proc.MainWindowTitle != "Splash Screen")
-                        ShowWindow(proc.MainWindowHandle, SW_MINIMIZE);
-                }
-                token.WaitHandle.WaitOne(200);
             }
         }
 

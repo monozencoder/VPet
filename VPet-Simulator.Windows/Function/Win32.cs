@@ -325,7 +325,22 @@ namespace VPet_Simulator.Windows
             [DllImport(LibraryName, CharSet = Properties.BuildCharSet, EntryPoint = "SetWindowLongPtr")]
             [Obsolete("请使用 SetWindowLongPtr 解决 x86 和 x64 需要使用不同方法")]
             public static extern IntPtr SetWindowLongPtr_x64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+            /// <summary>
+            /// 获得当前鼠标指针的屏幕坐标(物理像素,不受DPI缩放影响)
+            /// </summary>
+            [DllImport(LibraryName)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            public static extern bool GetCursorPos(out POINT lpPoint);
+
             public const string LibraryName = "user32";
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int X;
+            public int Y;
         }
 
         internal static class Properties

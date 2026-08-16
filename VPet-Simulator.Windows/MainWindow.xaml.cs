@@ -18,6 +18,7 @@ using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using VPet_Simulator.Core;
 using VPet_Simulator.Windows.Interface;
 using static VPet_Simulator.Core.GraphInfo;
@@ -796,6 +797,7 @@ namespace VPet_Simulator.Windows
         private void Window_Closed(object sender, EventArgs e)
         {
             CloseConfirm = false;
+            _pixelClickThroughTimer?.Stop();
             try
             {
                 //关闭所有插件
@@ -842,6 +844,7 @@ namespace VPet_Simulator.Windows
                 }
                 return IntPtr.Zero;
             });
+            StartPixelClickThroughWatcher();
         }
         private readonly bool _dwmEnabled;
         private readonly IntPtr _hwnd;
@@ -888,6 +891,64 @@ namespace VPet_Simulator.Windows
                         Opacity = 1;
                 }
             }
+        }
+        private DispatcherTimer _pixelClickThroughTimer;
+        /// <summary>
+        /// 启动"点击透明区域穿透到后方窗口"的鼠标位置轮询。
+        /// 由于开启 WS_EX_TRANSPARENT 后本窗口将不再收到鼠标消息,无法用事件感知鼠标何时移回不透明区域,
+        /// 因此使用计时器轮询全局鼠标位置(GetCursorPos 不受该样式影响)
+        /// </summary>
+        private void StartPixelClickThroughWatcher()
+        {
+            _pixelClickThroughTimer = new DispatcherTimer(DispatcherPriority.Input)
+            {
+                Interval = TimeSpan.FromMilliseconds(40)
+            };
+            _pixelClickThroughTimer.Tick += (_, _) => UpdatePixelClickThrough();
+            _pixelClickThroughTimer.Start();
+        }
+        private void UpdatePixelClickThrough()
+        {
+            //已经手动开启整窗穿透时,不要干扰该功能
+            if (HitThrough)
+                return;
+
+            if (!_dwmEnabled || Main == null || !IsVisible || !Set.PixelClickThrough)
+            {
+                SetPixelTransparent(false);
+                return;
+            }
+
+            if (!Win32.User32.GetCursorPos(out var pt))
+                return;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget == null)
+                return;
+            var screenPoint = source.CompositionTarget.TransformFromDevice.Transform(new Point(pt.X, pt.Y));
+
+            bool inside = screenPoint.X >= Left && screenPoint.X < Left + ActualWidth &&
+                          screenPoint.Y >= Top && screenPoint.Y < Top + ActualHeight;
+            if (!inside)
+            {
+                SetPixelTransparent(false);
+                return;
+            }
+
+            SetPixelTransparent(!Main.IsOpaqueAtScreenPoint(screenPoint));
+        }
+        /// <summary>
+        /// 根据当前窗口实际扩展样式,按需开启/关闭 WS_EX_TRANSPARENT(避免与手动整窗穿透互相覆盖状态)
+        /// </summary>
+        private void SetPixelTransparent(bool transparent)
+        {
+            long currentStyle = (long)Win32.User32.GetWindowLongPtr(_hwnd, Win32.GetWindowLongFields.GWL_EXSTYLE);
+            bool alreadyTransparent = (currentStyle & (long)Win32.ExtendedWindowStyles.WS_EX_TRANSPARENT) != 0;
+            if (transparent == alreadyTransparent)
+                return;
+            long newStyle = transparent
+                ? currentStyle | (long)Win32.ExtendedWindowStyles.WS_EX_TRANSPARENT
+                : currentStyle & ~(long)Win32.ExtendedWindowStyles.WS_EX_TRANSPARENT;
+            Win32.User32.SetWindowLongPtr(_hwnd, Win32.GetWindowLongFields.GWL_EXSTYLE, (IntPtr)newStyle);
         }
         private void WindowX_LocationChanged(object sender, EventArgs e)
         {
