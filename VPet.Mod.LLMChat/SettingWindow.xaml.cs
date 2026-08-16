@@ -51,6 +51,10 @@ namespace VPet.Mod.LLMChat
             if (cbTtsProvider.SelectedItem == null)
                 cbTtsProvider.SelectedIndex = 0;
 
+            sliderVoiceVolume.Value = settings.VoiceVolumePercent;
+            UpdateVoiceVolumeLabel();
+            testVoicePlayer.Volume = settings.VoiceVolumePercent / 100f;
+
             tbVoiceEndpoint.Text = settings.VoiceEndpoint;
             cbVoiceSpeaker.Items.Clear();
             cbVoiceSpeaker.Items.Add(new ComboBoxItem { Content = $"ID: {settings.VoiceSpeakerId} (未取得。「一覧取得」で選択可能)", Tag = settings.VoiceSpeakerId });
@@ -107,6 +111,17 @@ namespace VPet.Mod.LLMChat
             UpdateTtsProviderVisibility();
         }
 
+        private void UpdateVoiceVolumeLabel()
+        {
+            tbVoiceVolumeValue.Text = $"{(int)sliderVoiceVolume.Value}%";
+        }
+
+        private void sliderVoiceVolume_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            UpdateVoiceVolumeLabel();
+            testVoicePlayer.Volume = (float)(sliderVoiceVolume.Value / 100.0);
+        }
+
         private void UpdateApiKeyLabel()
         {
             var hasKey = CredentialStore.Exists(SelectedProvider.ToString());
@@ -143,6 +158,7 @@ namespace VPet.Mod.LLMChat
 
             settings.VoiceEnabled = cbVoiceEnabled.IsChecked == true;
             settings.TtsProvider = SelectedTtsProvider;
+            settings.VoiceVolumePercent = (int)sliderVoiceVolume.Value;
             if (!string.IsNullOrWhiteSpace(tbVoiceEndpoint.Text))
                 settings.VoiceEndpoint = tbVoiceEndpoint.Text.Trim();
             settings.VoiceSpeakerId = SelectedVoiceSpeakerId;

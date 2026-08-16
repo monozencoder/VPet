@@ -53,6 +53,8 @@ namespace VPet.Mod.LLMChat
         public bool VoiceEnabled { get; set; } = false;
         /// <summary>読み上げに使うTTSプロバイダー</summary>
         public TtsProviderKind TtsProvider { get; set; } = TtsProviderKind.Voicevox;
+        /// <summary>読み上げ音量(%)</summary>
+        public int VoiceVolumePercent { get; set; } = 100;
         /// <summary>VOICEVOX ENGINEのエンドポイント(事前に起動しておく必要あり)</summary>
         public string VoiceEndpoint { get; set; } = "http://127.0.0.1:50021";
         /// <summary>読み上げに使うVOICEVOXの話者スタイルID(設定画面の「話者一覧を取得」で選択)</summary>

@@ -170,6 +170,7 @@ namespace VPet_Simulator.Windows
             if (mw.Theme != null)
                 ThemeBox.SelectedItem = mw.Theme.TranslateName;
 
+            VoiceVolumeSlider.Value = mw.Set.VoiceVolume;
             VoiceCatchSilder.Value = mw.Set.MusicCatch;
             VoiceMaxSilder.Value = mw.Set.MusicMax;
 
@@ -268,6 +269,7 @@ namespace VPet_Simulator.Windows
             ListMenuItems.Add(listmenuswith("桌宠移动", 2, MoveEventBox));
             ListMenuItems.Add(listmenuswith("操作设置", 2, PressLengthSlider));
             ListMenuItems.Add(listmenuswith("桌宠名字", 2, TextBoxPetName));
+            ListMenuItems.Add(listmenuswith("声音设置", 2, VoiceVolumeSlider));
             ListMenuItems.Add(listmenuswith("音乐识别设置", 2, VoiceMaxSilder));
 
             ListMenuItems.Add(listmenuswith("自定义链接", 3, btn_DIY));
@@ -1430,6 +1432,13 @@ namespace VPet_Simulator.Windows
                 return;
             mw.Set.MusicCatch = VoiceCatchSilder.Value;
             mw.Set.MusicMax = VoiceMaxSilder.Value;
+        }
+
+        private void VoiceVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (!AllowChange)
+                return;
+            mw.Set.SetVoiceVolume(VoiceVolumeSlider.Value);
         }
 
         private void cleancache_click(object sender, RoutedEventArgs e)

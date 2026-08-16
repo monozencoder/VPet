@@ -35,6 +35,21 @@ public class InteractiveSettingModel : ObservableClass<InteractiveSettingModel>
     }
     #endregion
 
+    #region VoiceVolumePercent
+    private int _voiceVolumePercent;
+
+    /// <summary>
+    /// 播放声音大小 (百分比 0-100)
+    /// </summary>
+    [ReflectionProperty(nameof(Setting.VoiceVolume))]
+    [ReflectionPropertyConverter(typeof(PercentageConverter))]
+    public int VoiceVolumePercent
+    {
+        get => _voiceVolumePercent;
+        set => SetProperty(ref _voiceVolumePercent, value);
+    }
+    #endregion
+
     #region EnableFunction
     private bool _enableFunction;
 

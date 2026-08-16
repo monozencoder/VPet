@@ -786,6 +786,31 @@
                         </Grid>
                         <TextBlock Margin="0,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                                 Background="{x:Null}" TextWrapping="Wrap">
+                            <Run FontSize="18" FontWeight="Bold" Text="{ll:Str 声音设置}" /><LineBreak />
+                            <Run Text="{ll:Str 设置桌宠语音播放的音量大小}" />
+                        </TextBlock>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="15" />
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Text="{ll:Str 语音音量}"
+                                    ToolTip="{ll:Str 设置桌宠语音播放的音量大小}" />
+                            <Slider x:Name="VoiceVolumeSlider" Grid.Column="2" VerticalAlignment="Center"
+                                    IsSnapToTickEnabled="True" LargeChange=".1" Maximum="1" Minimum="0"
+                                    SmallChange=".01" Style="{DynamicResource StandardSliderStyle}" TickFrequency="0.01"
+                                    ToolTip="{ll:Str 设置桌宠语音播放的音量大小}" ValueChanged="VoiceVolumeSlider_ValueChanged"
+                                    Value="0.5" />
+                            <TextBlock Grid.Column="3" Margin="15,0,0,0" VerticalAlignment="Center"
+                                    Background="{x:Null}" FontSize="18" FontWeight="Bold"
+                                    Foreground="{DynamicResource DARKPrimaryDarker}"
+                                    Text="{Binding ElementName=VoiceVolumeSlider, Path=Value, StringFormat=p0}"
+                                    ToolTip="{ll:Str 设置桌宠语音播放的音量大小}" />
+                        </Grid>
+                        <TextBlock Margin="0,10,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                Background="{x:Null}" TextWrapping="Wrap">
                             <Run FontSize="18" FontWeight="Bold" Text="{ll:Str 音乐识别设置}" /><LineBreak />
                             <Run Text="{ll:Str 设置识别音乐播放特殊动作阈值}" /> <LineBreak />
                             <Run Text="{ll:Str 当前播放音量大小}" />

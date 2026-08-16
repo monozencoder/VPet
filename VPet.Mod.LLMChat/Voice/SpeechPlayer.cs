@@ -18,6 +18,9 @@ namespace VPet.Mod.LLMChat.Voice
         private WaveStream currentWaveStream;
         private CancellationTokenSource currentCts;
 
+        /// <summary>再生音量(0.0～1.0)。試し読み(設定がnull/未反映のとき)はこの値を直接調整して使う</summary>
+        public float Volume { get; set; } = 1f;
+
         public SpeechPlayer(LLMChatSettings settings)
         {
             this.settings = settings;
@@ -28,6 +31,8 @@ namespace VPet.Mod.LLMChat.Voice
         {
             if (settings == null || !settings.VoiceEnabled || string.IsNullOrWhiteSpace(text))
                 return;
+
+            Volume = Math.Clamp(settings.VoiceVolumePercent / 100f, 0f, 1f);
 
             switch (settings.TtsProvider)
             {
@@ -89,6 +94,7 @@ namespace VPet.Mod.LLMChat.Voice
             var waveStream = new WaveFileReader(new MemoryStream(wav));
             var output = new WaveOutEvent();
             output.Init(waveStream);
+            output.Volume = Math.Clamp(Volume, 0f, 1f);
 
             lock (playbackLock)
             {
