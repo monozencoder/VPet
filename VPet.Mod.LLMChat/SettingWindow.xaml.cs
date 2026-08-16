@@ -13,12 +13,17 @@ namespace VPet.Mod.LLMChat
     public partial class SettingWindow : Window
     {
         private readonly LLMChatSettings settings;
+        private readonly string petName;
         private readonly SpeechPlayer testVoicePlayer = new SpeechPlayer(null);
 
-        public SettingWindow(LLMChatSettings settings)
+        /// <summary>「記憶を消去」ボタンでディスク上の記憶を消去したか(呼び出し元で実行中の会話履歴もクリアする必要がある)</summary>
+        public bool MemoryCleared { get; private set; }
+
+        public SettingWindow(LLMChatSettings settings, string petName)
         {
             InitializeComponent();
             this.settings = settings;
+            this.petName = petName;
             LoadFromSettings();
             Closed += (_, _) => testVoicePlayer.Stop();
         }
@@ -77,6 +82,8 @@ namespace VPet.Mod.LLMChat
             cbAiVoicePreset.SelectedIndex = 0;
 
             UpdateTtsProviderVisibility();
+
+            cbMemoryEnabled.IsChecked = settings.MemoryPersistenceEnabled;
 
             cbVoiceInputEnabled.IsChecked = settings.VoiceInputEnabled;
             cbVoiceInputAutoSend.IsChecked = settings.VoiceInputAutoSend;
@@ -239,6 +246,8 @@ namespace VPet.Mod.LLMChat
             settings.AiVoiceInstallDir = tbAiVoiceInstallDir.Text?.Trim() ?? "";
             settings.AiVoicePresetName = SelectedAiVoicePresetName ?? "";
 
+            settings.MemoryPersistenceEnabled = cbMemoryEnabled.IsChecked == true;
+
             settings.VoiceInputEnabled = cbVoiceInputEnabled.IsChecked == true;
             settings.VoiceInputAutoSend = cbVoiceInputAutoSend.IsChecked == true;
             settings.MicSoundEnabled = cbMicSoundEnabled.IsChecked == true;
@@ -265,6 +274,19 @@ namespace VPet.Mod.LLMChat
         {
             DialogResult = false;
             Close();
+        }
+
+        private void btnClearMemory_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(this, "保存されているこれまでの会話記憶(履歴・要約)を消去します。よろしいですか？",
+                "記憶の消去", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            ChatMemoryStore.Clear(petName);
+            MemoryCleared = true;
+            tbMemoryStatus.Text = "記憶を消去しました";
+            tbMemoryStatus.Foreground = Brushes.Green;
         }
 
         private int SelectedVoiceSpeakerId =>

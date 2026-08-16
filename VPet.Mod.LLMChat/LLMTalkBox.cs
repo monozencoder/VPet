@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -25,6 +26,11 @@ namespace VPet.Mod.LLMChat
         private CancellationTokenSource activeRequestCts;
         private const int MaxHistoryMessages = 40;
 
+        /// <summary>直近の会話履歴が上限を超えて捨てられた分を要約して積み立てる長期記憶</summary>
+        private string longTermSummary = "";
+
+        private string PetName => plugin.MW?.Core?.Save?.Name;
+
         public LLMTalkBox(LLMChatPlugin plugin) : base(plugin)
         {
             this.plugin = plugin;
@@ -32,6 +38,14 @@ namespace VPet.Mod.LLMChat
             UpdateMicButtonVisibility();
             // 右クリック等でツールバー(この入力欄を含む)が表示されたら、自動で入力欄にフォーカスする
             IsVisibleChanged += LLMTalkBox_IsVisibleChanged;
+
+            if (plugin.Settings.MemoryPersistenceEnabled)
+            {
+                var stored = ChatMemoryStore.Load(PetName);
+                history.AddRange(stored.History);
+                longTermSummary = stored.Summary ?? "";
+                TrimHistory();
+            }
         }
 
         /// <summary>設定の音声入力有効フラグに応じてマイクボタンの表示を更新する</summary>
@@ -71,9 +85,10 @@ namespace VPet.Mod.LLMChat
             try
             {
                 var provider = BuildProvider();
-                var reply = await provider.ChatStreamAsync(plugin.Settings.SystemPrompt, history, delta => sayInfo.UpdateText(delta), cts.Token).ConfigureAwait(true);
+                var reply = await provider.ChatStreamAsync(BuildSystemPromptWithMemory(), history, delta => sayInfo.UpdateText(delta), cts.Token).ConfigureAwait(true);
                 sayInfo.FinishGenerate();
                 history.Add(new ChatMessage("assistant", reply));
+                PersistMemory();
                 voicePlayer.Speak(reply);
             }
             catch (OperationCanceledException)
@@ -133,8 +148,9 @@ namespace VPet.Mod.LLMChat
                 var provider = BuildProvider();
                 // 自発的な話しかけはユーザーが待っているわけではないため、ストリーミング表示はせず
                 // 従来通り全文確定後にまとめて表示する(失敗時も静かに何もしない挙動を維持)
-                var reply = await provider.ChatStreamAsync(plugin.Settings.SystemPrompt, history, _ => { }, cts.Token).ConfigureAwait(true);
+                var reply = await provider.ChatStreamAsync(BuildSystemPromptWithMemory(), history, _ => { }, cts.Token).ConfigureAwait(true);
                 history.Add(new ChatMessage("assistant", reply));
+                PersistMemory();
                 voicePlayer.Speak(reply);
                 DisplayThinkToSayRnd(reply);
             }
@@ -152,11 +168,16 @@ namespace VPet.Mod.LLMChat
 
         public override void Setting()
         {
-            var window = new SettingWindow(plugin.Settings);
+            var window = new SettingWindow(plugin.Settings, PetName);
             if (window.ShowDialog() == true)
             {
                 plugin.Settings.Save();
                 UpdateMicButtonVisibility();
+            }
+            if (window.MemoryCleared)
+            {
+                history.Clear();
+                longTermSummary = "";
             }
         }
 
@@ -259,10 +280,70 @@ namespace VPet.Mod.LLMChat
             return ProviderFactory.Create(plugin.Settings, apiKey);
         }
 
+        /// <summary>システムプロンプトに、過去に要約された長期記憶があれば末尾に付け加える</summary>
+        private string BuildSystemPromptWithMemory()
+        {
+            if (string.IsNullOrWhiteSpace(longTermSummary))
+                return plugin.Settings.SystemPrompt;
+            return $"{plugin.Settings.SystemPrompt}\n\n【あなたが覚えている過去の記憶】\n{longTermSummary}";
+        }
+
+        /// <summary>
+        /// 上限を超えた古い会話は、丸ごと捨てるのではなくLLMに要約させて長期記憶に積み立てる。
+        /// 要約は次回以降の会話に響かないよう、失敗しても静かに諦める(次のTrimHistoryで再度試みられる)
+        /// </summary>
         private void TrimHistory()
         {
-            while (history.Count > MaxHistoryMessages)
-                history.RemoveAt(0);
+            if (history.Count <= MaxHistoryMessages)
+                return;
+            var overflowCount = history.Count - MaxHistoryMessages;
+            var overflow = history.GetRange(0, overflowCount);
+            history.RemoveRange(0, overflowCount);
+
+            if (plugin.Settings.MemoryPersistenceEnabled)
+                _ = ArchiveToLongTermMemoryAsync(overflow);
+        }
+
+        private async Task ArchiveToLongTermMemoryAsync(List<ChatMessage> overflow)
+        {
+            try
+            {
+                var apiKey = CredentialStore.Load(plugin.Settings.CredentialKey) ?? string.Empty;
+                if (string.IsNullOrEmpty(apiKey))
+                    return;
+
+                var transcript = string.Join("\n", overflow.Select(m => $"{(m.Role == "user" ? "飼い主" : "キャラクター")}: {m.Content}"));
+                var prompt = new List<ChatMessage>
+                {
+                    new ChatMessage("user",
+                        "以下はキャラクターと飼い主のこれまでの会話ログの一部です。今後の会話でキャラクターが覚えておくべき重要な情報" +
+                        "(名前・好み・出来事・約束など)だけを、簡潔な日本語の箇条書きで要約してください。些細な雑談は無視して構いません。\n\n" +
+                        $"---既存の記憶---\n{longTermSummary}\n\n---新しい会話ログ---\n{transcript}"),
+                };
+
+                var provider = ProviderFactory.Create(plugin.Settings, apiKey, maxTokens: 400);
+                var summary = await provider.ChatStreamAsync("あなたは会話ログを要約するアシスタントです。", prompt, _ => { }, CancellationToken.None).ConfigureAwait(true);
+                if (string.IsNullOrWhiteSpace(summary))
+                    return;
+
+                longTermSummary = summary.Trim();
+                var maxChars = plugin.Settings.MemorySummaryMaxChars;
+                if (longTermSummary.Length > maxChars)
+                    longTermSummary = longTermSummary.Substring(longTermSummary.Length - maxChars);
+                PersistMemory();
+            }
+            catch
+            {
+                // 要約に失敗しても会話自体は継続できるよう、ここでは無視する
+            }
+        }
+
+        private void PersistMemory()
+        {
+            if (!plugin.Settings.MemoryPersistenceEnabled)
+                return;
+            var store = new ChatMemoryStore { History = new List<ChatMessage>(history), Summary = longTermSummary };
+            store.Save(PetName);
         }
     }
 }

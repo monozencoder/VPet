@@ -83,6 +83,11 @@ namespace VPet.Mod.LLMChat
         /// <summary>マイクの録音開始/停止時に短い効果音を鳴らすか</summary>
         public bool MicSoundEnabled { get; set; } = true;
 
+        /// <summary>会話履歴と長期記憶をディスクに保存し、アプリ再起動後も維持するか</summary>
+        public bool MemoryPersistenceEnabled { get; set; } = true;
+        /// <summary>長期記憶(要約)の最大文字数。超えた場合は古い部分から失われる</summary>
+        public int MemorySummaryMaxChars { get; set; } = 2000;
+
         private const string FileName = "settings.json";
 
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
