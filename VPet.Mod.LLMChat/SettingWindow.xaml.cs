@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using VPet.Mod.LLMChat.Voice;
 
 namespace VPet.Mod.LLMChat
@@ -77,8 +78,7 @@ namespace VPet.Mod.LLMChat
             cbVoiceInputAutoSend.IsChecked = settings.VoiceInputAutoSend;
             cbMicSoundEnabled.IsChecked = settings.MicSoundEnabled;
             tbVoiceInputModel.Text = settings.VoiceInputModel;
-            var hasVoiceInputKey = CredentialStore.Exists(LLMChatSettings.VoiceInputCredentialKey);
-            tbVoiceInputKeyLabel.Text = hasVoiceInputKey ? "Whisper用 OpenAI APIキー (設定済み・変更する場合のみ入力)" : "Whisper用 OpenAI APIキー";
+            SetKeyStatus(tbVoiceInputKeyStatus, CredentialStore.Exists(LLMChatSettings.VoiceInputCredentialKey));
 
             UpdateApiKeyLabel();
             UpdateCustomEndpointVisibility();
@@ -92,8 +92,13 @@ namespace VPet.Mod.LLMChat
 
         private void UpdateTtsOpenAiKeyLabel()
         {
-            var hasKey = CredentialStore.Exists(LLMChatSettings.OpenAiTtsCredentialKey);
-            tbTtsOpenAiKeyLabel.Text = hasKey ? "OpenAI TTS用 APIキー (設定済み・変更する場合のみ入力)" : "OpenAI TTS用 APIキー";
+            SetKeyStatus(tbTtsOpenAiKeyStatus, CredentialStore.Exists(LLMChatSettings.OpenAiTtsCredentialKey));
+        }
+
+        private static void SetKeyStatus(TextBlock statusBlock, bool hasKey)
+        {
+            statusBlock.Text = hasKey ? "✓ 設定済み" : "未設定";
+            statusBlock.Foreground = hasKey ? Brushes.Green : Brushes.Gray;
         }
 
         private void UpdateTtsProviderVisibility()
@@ -124,8 +129,7 @@ namespace VPet.Mod.LLMChat
 
         private void UpdateApiKeyLabel()
         {
-            var hasKey = CredentialStore.Exists(SelectedProvider.ToString());
-            tbApiKeyLabel.Text = hasKey ? "APIキー (設定済み・変更する場合のみ入力)" : "APIキー";
+            SetKeyStatus(tbApiKeyStatus, CredentialStore.Exists(SelectedProvider.ToString()));
         }
 
         private void UpdateCustomEndpointVisibility()

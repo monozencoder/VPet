@@ -36,7 +36,10 @@
         </StackPanel>
 
         <StackPanel Grid.Row="5" Margin="0,0,0,10">
-            <TextBlock Name="tbApiKeyLabel" Text="APIキー" Margin="0,0,0,4" FontWeight="Bold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <TextBlock Name="tbApiKeyLabel" Text="APIキー" FontWeight="Bold"/>
+                <TextBlock Name="tbApiKeyStatus" Margin="8,0,0,0" FontSize="11" VerticalAlignment="Center"/>
+            </StackPanel>
             <PasswordBox Name="pbApiKey"/>
             <TextBlock Text="※空欄のまま保存すると、既存のAPIキーはそのまま保持されます" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -106,7 +109,10 @@
                 </StackPanel>
                 <TextBlock Text="※音声名の例: alloy, echo, fable, onyx, nova, shimmer" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
                 <StackPanel Margin="0,6,0,0">
-                    <TextBlock Name="tbTtsOpenAiKeyLabel" Text="OpenAI TTS用 APIキー" FontWeight="Bold"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Name="tbTtsOpenAiKeyLabel" Text="OpenAI TTS用 APIキー" FontWeight="Bold"/>
+                        <TextBlock Name="tbTtsOpenAiKeyStatus" Margin="8,0,0,0" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
                     <PasswordBox Name="pbTtsOpenAiKey"/>
                     <TextBlock Text="※空欄のまま保存すると、既存のキーはそのまま保持されます。他の音声機能とは別のキーです" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
@@ -127,7 +133,10 @@
                 <TextBox Name="tbVoiceInputModel" Width="140" Margin="6,0,0,0"/>
             </StackPanel>
             <StackPanel Margin="20,6,0,0">
-                <TextBlock Name="tbVoiceInputKeyLabel" Text="Whisper用 OpenAI APIキー" FontWeight="Bold"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Name="tbVoiceInputKeyLabel" Text="Whisper用 OpenAI APIキー" FontWeight="Bold"/>
+                    <TextBlock Name="tbVoiceInputKeyStatus" Margin="8,0,0,0" FontSize="11" VerticalAlignment="Center"/>
+                </StackPanel>
                 <PasswordBox Name="pbVoiceInputKey"/>
                 <TextBlock Text="※空欄のまま保存すると、既存のキーはそのまま保持されます。チャットのプロバイダー設定とは別のキーです" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
