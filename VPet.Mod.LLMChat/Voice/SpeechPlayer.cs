@@ -1,24 +1,24 @@
 using System;
 using System.IO;
-using System.Media;
 using System.Threading;
 using System.Threading.Tasks;
+using NAudio.Wave;
 
 namespace VPet.Mod.LLMChat.Voice
 {
     /// <summary>
-    /// VOICEVOXでテキストを音声合成し再生する。
-    /// 音声はあくまで補助機能のため、VOICEVOX未起動や通信エラーが発生してもチャット自体は止めず、静かに諦める。
+    /// 設定されたプロバイダー(VOICEVOX/OpenAI)でテキストを音声合成し再生する。
+    /// 音声はあくまで補助機能のため、エンジン未起動や通信エラーが発生してもチャット自体は止めず、静かに諦める。
     /// </summary>
-    public class VoicevoxSpeechPlayer
+    public class SpeechPlayer
     {
         private readonly LLMChatSettings settings;
         private readonly object playbackLock = new object();
-        private SoundPlayer currentPlayer;
-        private MemoryStream currentStream;
+        private WaveOutEvent currentOutput;
+        private WaveStream currentWaveStream;
         private CancellationTokenSource currentCts;
 
-        public VoicevoxSpeechPlayer(LLMChatSettings settings)
+        public SpeechPlayer(LLMChatSettings settings)
         {
             this.settings = settings;
         }
@@ -28,54 +28,75 @@ namespace VPet.Mod.LLMChat.Voice
         {
             if (settings == null || !settings.VoiceEnabled || string.IsNullOrWhiteSpace(text))
                 return;
-            SpeakWith(text, settings.VoiceEndpoint, settings.VoiceSpeakerId);
+
+            if (settings.TtsProvider == TtsProviderKind.OpenAi)
+            {
+                var apiKey = CredentialStore.Load(LLMChatSettings.OpenAiTtsCredentialKey) ?? string.Empty;
+                SpeakWith(text, TtsProviderKind.OpenAi, null, 0, settings.OpenAiTtsModel, settings.OpenAiTtsVoice, apiKey, null, null);
+            }
+            else
+            {
+                SpeakWith(text, TtsProviderKind.Voicevox, settings.VoiceEndpoint, settings.VoiceSpeakerId, null, null, null, null, null);
+            }
         }
 
-        /// <summary>設定の有効フラグに関わらず、指定内容で試し読みする(設定画面のテストボタン用)</summary>
-        public void SpeakForTest(string text, string endpoint, int speakerId)
+        /// <summary>設定の有効フラグに関わらず、指定内容でVOICEVOXの試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
+        public void SpeakForTestVoicevox(string text, string endpoint, int speakerId, Action onSuccess = null, Action<string> onError = null)
         {
-            SpeakWith(text, endpoint, speakerId);
+            SpeakWith(text, TtsProviderKind.Voicevox, endpoint, speakerId, null, null, null, onSuccess, onError);
         }
 
-        private void SpeakWith(string text, string endpoint, int speakerId)
+        /// <summary>設定の有効フラグに関わらず、指定内容でOpenAI TTSの試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
+        public void SpeakForTestOpenAi(string text, string model, string voice, string apiKey, Action onSuccess = null, Action<string> onError = null)
+        {
+            SpeakWith(text, TtsProviderKind.OpenAi, null, 0, model, voice, apiKey, onSuccess, onError);
+        }
+
+        private void SpeakWith(string text, TtsProviderKind provider, string endpoint, int speakerId, string model, string voice, string apiKey, Action onSuccess, Action<string> onError)
         {
             Stop();
             var cts = new CancellationTokenSource();
             currentCts = cts;
-            _ = SpeakAsync(text, endpoint, speakerId, cts.Token);
+            _ = SpeakAsync(text, provider, endpoint, speakerId, model, voice, apiKey, onSuccess, onError, cts.Token);
         }
 
-        private async Task SpeakAsync(string text, string endpoint, int speakerId, CancellationToken cancellationToken)
+        private async Task SpeakAsync(string text, TtsProviderKind provider, string endpoint, int speakerId, string model, string voice, string apiKey, Action onSuccess, Action<string> onError, CancellationToken cancellationToken)
         {
             try
             {
-                var client = new VoicevoxClient(endpoint);
-                var wav = await client.SynthesizeAsync(text, speakerId, cancellationToken).ConfigureAwait(false);
+                var wav = provider == TtsProviderKind.OpenAi
+                    ? await new OpenAiTtsClient().SynthesizeAsync(text, apiKey, model, voice, cancellationToken).ConfigureAwait(false)
+                    : await new VoicevoxClient(endpoint).SynthesizeAsync(text, speakerId, cancellationToken).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
                     return;
                 Play(wav);
+                onSuccess?.Invoke();
             }
-            catch
+            catch (Exception ex)
             {
-                // VOICEVOX未起動・接続失敗・合成エラー等は読み上げを諦めるだけにする
+                // 通常の読み上げ(Speak)ではエンジン未起動・接続失敗等でチャット自体を止めたくないため黙って諦めるが、
+                // 試し読み(テストボタン)はエラー原因を確認する目的なのでonError経由で呼び出し元に伝える
+                onError?.Invoke(ex.Message);
             }
         }
 
         private void Play(byte[] wav)
         {
-            var stream = new MemoryStream(wav);
-            var player = new SoundPlayer(stream);
-            player.Load();
+            // System.Media.SoundPlayer(winmm PlaySound)はOpenAI等が返すwavの微妙な形式差異で
+            // 例外を投げずに無音のまま失敗することがあるため、より寛容なNAudioで再生する
+            var waveStream = new WaveFileReader(new MemoryStream(wav));
+            var output = new WaveOutEvent();
+            output.Init(waveStream);
 
             lock (playbackLock)
             {
-                currentPlayer?.Stop();
-                currentPlayer?.Dispose();
-                currentStream?.Dispose();
-                currentPlayer = player;
-                currentStream = stream;
+                currentOutput?.Stop();
+                currentOutput?.Dispose();
+                currentWaveStream?.Dispose();
+                currentOutput = output;
+                currentWaveStream = waveStream;
             }
-            player.Play();
+            output.Play();
         }
 
         public void Stop()
@@ -83,7 +104,7 @@ namespace VPet.Mod.LLMChat.Voice
             currentCts?.Cancel();
             lock (playbackLock)
             {
-                currentPlayer?.Stop();
+                currentOutput?.Stop();
             }
         }
     }

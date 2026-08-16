@@ -19,7 +19,7 @@ namespace VPet.Mod.LLMChat
     {
         private readonly LLMChatPlugin plugin;
         private readonly List<ChatMessage> history = new List<ChatMessage>();
-        private readonly VoicevoxSpeechPlayer voicePlayer;
+        private readonly SpeechPlayer voicePlayer;
         private AudioRecorder recorder;
         private bool isRecording;
         private CancellationTokenSource activeRequestCts;
@@ -28,7 +28,7 @@ namespace VPet.Mod.LLMChat
         public LLMTalkBox(LLMChatPlugin plugin) : base(plugin)
         {
             this.plugin = plugin;
-            voicePlayer = new VoicevoxSpeechPlayer(plugin.Settings);
+            voicePlayer = new SpeechPlayer(plugin.Settings);
             UpdateMicButtonVisibility();
             // 右クリック等でツールバー(この入力欄を含む)が表示されたら、自動で入力欄にフォーカスする
             IsVisibleChanged += LLMTalkBox_IsVisibleChanged;

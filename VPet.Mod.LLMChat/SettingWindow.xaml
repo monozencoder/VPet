@@ -52,21 +52,49 @@
         </StackPanel>
 
         <StackPanel Grid.Row="7" Margin="0,0,0,10">
-            <CheckBox Name="cbVoiceEnabled" Content="VOICEVOXで読み上げる" FontWeight="Bold"/>
+            <CheckBox Name="cbVoiceEnabled" Content="返信を読み上げる" FontWeight="Bold"/>
             <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                <TextBlock Text="エンドポイント:" VerticalAlignment="Center"/>
-                <TextBox Name="tbVoiceEndpoint" Width="180" Margin="6,0,0,0"/>
+                <TextBlock Text="読み上げ方式:" VerticalAlignment="Center"/>
+                <ComboBox Name="cbTtsProvider" Width="180" Margin="6,0,0,0" SelectionChanged="cbTtsProvider_SelectionChanged">
+                    <ComboBoxItem Content="VOICEVOX (ローカル)" Tag="Voicevox"/>
+                    <ComboBoxItem Content="OpenAI TTS (クラウドAPI)" Tag="OpenAi"/>
+                </ComboBox>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                <TextBlock Text="話者:" VerticalAlignment="Center"/>
-                <ComboBox Name="cbVoiceSpeaker" Width="170" Margin="6,0,6,0"/>
-                <Button Name="btnFetchSpeakers" Content="一覧取得" Click="btnFetchSpeakers_Click"/>
+
+            <StackPanel Name="spVoicevoxSettings" Margin="20,6,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="エンドポイント:" VerticalAlignment="Center"/>
+                    <TextBox Name="tbVoiceEndpoint" Width="180" Margin="6,0,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <TextBlock Text="話者:" VerticalAlignment="Center"/>
+                    <ComboBox Name="cbVoiceSpeaker" Width="170" Margin="6,0,6,0"/>
+                    <Button Name="btnFetchSpeakers" Content="一覧取得" Click="btnFetchSpeakers_Click"/>
+                </StackPanel>
+                <TextBlock Text="※事前にVOICEVOXアプリ/ENGINEを起動しておく必要があります" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
+
+            <StackPanel Name="spOpenAiTtsSettings" Margin="20,6,0,0" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="モデル:" VerticalAlignment="Center"/>
+                    <TextBox Name="tbTtsOpenAiModel" Width="150" Margin="6,0,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <TextBlock Text="音声:" VerticalAlignment="Center"/>
+                    <TextBox Name="tbTtsOpenAiVoice" Width="150" Margin="6,0,0,0"/>
+                </StackPanel>
+                <TextBlock Text="※音声名の例: alloy, echo, fable, onyx, nova, shimmer" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                <StackPanel Margin="0,6,0,0">
+                    <TextBlock Name="tbTtsOpenAiKeyLabel" Text="OpenAI TTS用 APIキー" FontWeight="Bold"/>
+                    <PasswordBox Name="pbTtsOpenAiKey"/>
+                    <TextBlock Text="※空欄のまま保存すると、既存のキーはそのまま保持されます。他の音声機能とは別のキーです" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+
             <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
                 <Button Name="btnTestVoice" Content="試し読み" Width="80" Click="btnTestVoice_Click"/>
                 <TextBlock Name="tbVoiceStatus" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="Gray" FontSize="11"/>
             </StackPanel>
-            <TextBlock Text="※事前にVOICEVOXアプリ/ENGINEを起動しておく必要があります" Foreground="Gray" FontSize="11" Margin="20,4,0,0" TextWrapping="Wrap"/>
         </StackPanel>
 
         <StackPanel Grid.Row="8" Margin="0,0,0,10">

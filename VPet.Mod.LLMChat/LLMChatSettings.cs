@@ -17,6 +17,17 @@ namespace VPet.Mod.LLMChat
     }
 
     /// <summary>
+    /// 対応する読み上げ(TTS)プロバイダーの種類
+    /// </summary>
+    public enum TtsProviderKind
+    {
+        /// <summary>ローカルで起動するVOICEVOX ENGINE</summary>
+        Voicevox,
+        /// <summary>OpenAIのクラウドTTS API</summary>
+        OpenAi,
+    }
+
+    /// <summary>
     /// LLMChat MODの非秘匿設定(APIキーは含まない)。
     /// APIキーは <see cref="CredentialStore"/> 経由でWindows資格情報マネージャーに保存する。
     /// </summary>
@@ -36,12 +47,20 @@ namespace VPet.Mod.LLMChat
         /// <summary>間隔が経過した時に実際に話しかける確率(%)</summary>
         public int ProactiveChatChancePercent { get; set; } = 40;
 
-        /// <summary>VOICEVOXで返信を読み上げるか</summary>
+        /// <summary>返信を読み上げるか</summary>
         public bool VoiceEnabled { get; set; } = false;
+        /// <summary>読み上げに使うTTSプロバイダー</summary>
+        public TtsProviderKind TtsProvider { get; set; } = TtsProviderKind.Voicevox;
         /// <summary>VOICEVOX ENGINEのエンドポイント(事前に起動しておく必要あり)</summary>
         public string VoiceEndpoint { get; set; } = "http://127.0.0.1:50021";
         /// <summary>読み上げに使うVOICEVOXの話者スタイルID(設定画面の「話者一覧を取得」で選択)</summary>
         public int VoiceSpeakerId { get; set; } = 3;
+        /// <summary>OpenAI TTSで使うモデル名</summary>
+        public string OpenAiTtsModel { get; set; } = "gpt-4o-mini-tts";
+        /// <summary>OpenAI TTSで使う音声名(alloy, echo, fable, onyx, nova, shimmer等)</summary>
+        public string OpenAiTtsVoice { get; set; } = "alloy";
+        /// <summary>OpenAI TTS用APIキーのCredentialStoreキー(他の音声機能とは独立)</summary>
+        public static string OpenAiTtsCredentialKey => "OpenAI_TTS";
 
         /// <summary>マイクボタンで音声入力(OpenAI Whisper)を使うか</summary>
         public bool VoiceInputEnabled { get; set; } = false;

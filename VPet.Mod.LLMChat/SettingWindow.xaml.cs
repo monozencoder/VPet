@@ -9,7 +9,7 @@ namespace VPet.Mod.LLMChat
     public partial class SettingWindow : Window
     {
         private readonly LLMChatSettings settings;
-        private readonly VoicevoxSpeechPlayer testVoicePlayer = new VoicevoxSpeechPlayer(null);
+        private readonly SpeechPlayer testVoicePlayer = new SpeechPlayer(null);
 
         public SettingWindow(LLMChatSettings settings)
         {
@@ -40,10 +40,26 @@ namespace VPet.Mod.LLMChat
             tbProactiveChance.Text = settings.ProactiveChatChancePercent.ToString();
 
             cbVoiceEnabled.IsChecked = settings.VoiceEnabled;
+            foreach (ComboBoxItem item in cbTtsProvider.Items)
+            {
+                if ((string)item.Tag == settings.TtsProvider.ToString())
+                {
+                    cbTtsProvider.SelectedItem = item;
+                    break;
+                }
+            }
+            if (cbTtsProvider.SelectedItem == null)
+                cbTtsProvider.SelectedIndex = 0;
+
             tbVoiceEndpoint.Text = settings.VoiceEndpoint;
             cbVoiceSpeaker.Items.Clear();
             cbVoiceSpeaker.Items.Add(new ComboBoxItem { Content = $"ID: {settings.VoiceSpeakerId} (未取得。「一覧取得」で選択可能)", Tag = settings.VoiceSpeakerId });
             cbVoiceSpeaker.SelectedIndex = 0;
+
+            tbTtsOpenAiModel.Text = settings.OpenAiTtsModel;
+            tbTtsOpenAiVoice.Text = settings.OpenAiTtsVoice;
+            UpdateTtsOpenAiKeyLabel();
+            UpdateTtsProviderVisibility();
 
             cbVoiceInputEnabled.IsChecked = settings.VoiceInputEnabled;
             cbVoiceInputAutoSend.IsChecked = settings.VoiceInputAutoSend;
@@ -58,6 +74,29 @@ namespace VPet.Mod.LLMChat
 
         private LlmProviderKind SelectedProvider =>
             (LlmProviderKind)System.Enum.Parse(typeof(LlmProviderKind), (string)((ComboBoxItem)cbProvider.SelectedItem).Tag);
+
+        private TtsProviderKind SelectedTtsProvider =>
+            (TtsProviderKind)System.Enum.Parse(typeof(TtsProviderKind), (string)((ComboBoxItem)cbTtsProvider.SelectedItem).Tag);
+
+        private void UpdateTtsOpenAiKeyLabel()
+        {
+            var hasKey = CredentialStore.Exists(LLMChatSettings.OpenAiTtsCredentialKey);
+            tbTtsOpenAiKeyLabel.Text = hasKey ? "OpenAI TTS用 APIキー (設定済み・変更する場合のみ入力)" : "OpenAI TTS用 APIキー";
+        }
+
+        private void UpdateTtsProviderVisibility()
+        {
+            if (cbTtsProvider.SelectedItem == null)
+                return;
+            var isOpenAi = SelectedTtsProvider == TtsProviderKind.OpenAi;
+            spVoicevoxSettings.Visibility = isOpenAi ? Visibility.Collapsed : Visibility.Visible;
+            spOpenAiTtsSettings.Visibility = isOpenAi ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void cbTtsProvider_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateTtsProviderVisibility();
+        }
 
         private void UpdateApiKeyLabel()
         {
@@ -94,9 +133,14 @@ namespace VPet.Mod.LLMChat
             settings.ProactiveChatChancePercent = ParseIntOrDefault(tbProactiveChance.Text, 0, 100, settings.ProactiveChatChancePercent);
 
             settings.VoiceEnabled = cbVoiceEnabled.IsChecked == true;
+            settings.TtsProvider = SelectedTtsProvider;
             if (!string.IsNullOrWhiteSpace(tbVoiceEndpoint.Text))
                 settings.VoiceEndpoint = tbVoiceEndpoint.Text.Trim();
             settings.VoiceSpeakerId = SelectedVoiceSpeakerId;
+            if (!string.IsNullOrWhiteSpace(tbTtsOpenAiModel.Text))
+                settings.OpenAiTtsModel = tbTtsOpenAiModel.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(tbTtsOpenAiVoice.Text))
+                settings.OpenAiTtsVoice = tbTtsOpenAiVoice.Text.Trim();
 
             settings.VoiceInputEnabled = cbVoiceInputEnabled.IsChecked == true;
             settings.VoiceInputAutoSend = cbVoiceInputAutoSend.IsChecked == true;
@@ -111,6 +155,10 @@ namespace VPet.Mod.LLMChat
             var newVoiceInputKey = pbVoiceInputKey.Password;
             if (!string.IsNullOrEmpty(newVoiceInputKey))
                 CredentialStore.Save(LLMChatSettings.VoiceInputCredentialKey, newVoiceInputKey);
+
+            var newTtsOpenAiKey = pbTtsOpenAiKey.Password;
+            if (!string.IsNullOrEmpty(newTtsOpenAiKey))
+                CredentialStore.Save(LLMChatSettings.OpenAiTtsCredentialKey, newTtsOpenAiKey);
 
             DialogResult = true;
             Close();
@@ -164,7 +212,25 @@ namespace VPet.Mod.LLMChat
         private void btnTestVoice_Click(object sender, RoutedEventArgs e)
         {
             tbVoiceStatus.Text = "再生中...";
-            testVoicePlayer.SpeakForTest("こんにちは、よろしくね！", tbVoiceEndpoint.Text, SelectedVoiceSpeakerId);
+            void OnSuccess() => Dispatcher.Invoke(() => tbVoiceStatus.Text = "再生開始しました(聞こえない場合は音量/出力デバイスをご確認ください)");
+            void OnError(string message) => Dispatcher.Invoke(() => tbVoiceStatus.Text = $"再生失敗: {message}");
+
+            if (SelectedTtsProvider == TtsProviderKind.OpenAi)
+            {
+                var apiKey = !string.IsNullOrEmpty(pbTtsOpenAiKey.Password)
+                    ? pbTtsOpenAiKey.Password
+                    : CredentialStore.Load(LLMChatSettings.OpenAiTtsCredentialKey) ?? string.Empty;
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    tbVoiceStatus.Text = "再生失敗: OpenAI TTS用のAPIキーが未設定です";
+                    return;
+                }
+                testVoicePlayer.SpeakForTestOpenAi("こんにちは、よろしくね！", tbTtsOpenAiModel.Text, tbTtsOpenAiVoice.Text, apiKey, OnSuccess, OnError);
+            }
+            else
+            {
+                testVoicePlayer.SpeakForTestVoicevox("こんにちは、よろしくね！", tbVoiceEndpoint.Text, SelectedVoiceSpeakerId, OnSuccess, OnError);
+            }
         }
 
         private static int ParseIntOrDefault(string text, int min, int max, int fallback)
