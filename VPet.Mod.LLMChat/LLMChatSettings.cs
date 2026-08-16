@@ -25,6 +25,8 @@ namespace VPet.Mod.LLMChat
         Voicevox,
         /// <summary>OpenAIのクラウドTTS API</summary>
         OpenAi,
+        /// <summary>ローカルにインストールされたA.I.VOICE Editor</summary>
+        AiVoice,
     }
 
     /// <summary>
@@ -61,6 +63,10 @@ namespace VPet.Mod.LLMChat
         public string OpenAiTtsVoice { get; set; } = "alloy";
         /// <summary>OpenAI TTS用APIキーのCredentialStoreキー(他の音声機能とは独立)</summary>
         public static string OpenAiTtsCredentialKey => "OpenAI_TTS";
+        /// <summary>A.I.VOICE Editorのインストールフォルダ(空欄なら既定のインストール場所を自動探索)</summary>
+        public string AiVoiceInstallDir { get; set; } = "";
+        /// <summary>読み上げに使うA.I.VOICEのボイスプリセット名(空欄ならA.I.VOICE Editor側で選択中のものを使用)</summary>
+        public string AiVoicePresetName { get; set; } = "";
 
         /// <summary>マイクボタンで音声入力(OpenAI Whisper)を使うか</summary>
         public bool VoiceInputEnabled { get; set; } = false;

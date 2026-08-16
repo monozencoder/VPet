@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<!--
+			A.I.VOICE公式API(AI.Talk.Editor.Api.dll)はWCF(System.ServiceModel)前提でビルドされているが、
+			net8.0では厳密名アセンブリ(System.ServiceModel, PublicKeyToken=b77a5c561934e089)が
+			別名・別署名鍵のOSSパッケージに置き換わっており解決できず、直接呼び出せない。
+			System.ServiceModelが標準搭載されているnet48でこの仲介プロセスだけをビルドし、
+			VPet.Mod.LLMChat(net8.0)側からは別プロセスとして都度起動して使う。
+		-->
+		<TargetFramework>net48</TargetFramework>
+		<RootNamespace>VPet.Mod.LLMChat.AiVoiceBridge</RootNamespace>
+		<AssemblyName>VPet.Mod.LLMChat.AiVoiceBridge</AssemblyName>
+		<LangVersion>latest</LangVersion>
+		<Nullable>disable</Nullable>
+		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+
+		<AssemblyTitle>VPet.Mod.LLMChat A.I.VOICE Bridge</AssemblyTitle>
+		<Description>VPet.Mod.LLMChatからA.I.VOICE Editorを操作するための仲介プロセス(net48)</Description>
+		<Product>VPet.Mod.LLMChat.AiVoiceBridge</Product>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- MOD本体(net8.0)側と同じリクエスト/レスポンス形式を共有するため、ファイルをリンク参照する -->
+		<Compile Include="..\VPet.Mod.LLMChat\Voice\AiVoiceProtocol.cs" Link="AiVoiceProtocol.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.Text.Json" Version="8.0.5" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- dynamic(RuntimeBinder)を使うにはnet48のSDKスタイルプロジェクトで明示参照が必要 -->
+		<Reference Include="Microsoft.CSharp" />
+	</ItemGroup>
+
+	<!--
+		ビルド成果物をVPet本体のmodフォルダへ配置する。
+		VPet本体のMODローダー(CoreMOD.cs)はpluginフォルダ直下の*.dllを全てAssembly.LoadFromするため、
+		System.Text.Json等このexeの依存DLLを直下に置くと本体が既に持つ同名アセンブリと衝突し、
+		LLMChat MOD全体が読み込めなくなる(実機で確認済み)。
+		EnumerateFilesはサブフォルダを再帰しないため、plugin\aivoice-bridge\に隔離して配置する。
+	-->
+	<PropertyGroup>
+		<ModName>1200_LLMChat</ModName>
+		<BridgeSubDir>aivoice-bridge</BridgeSubDir>
+		<SourceModRoot>$(ProjectDir)..\VPet-Simulator.Windows\mod\$(ModName)\</SourceModRoot>
+	</PropertyGroup>
+	<ItemGroup>
+		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x64\Debug\net8.0-windows\mod\$(ModName)\" />
+		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x86\Debug\net8.0-windows\mod\$(ModName)\" />
+		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x64\Release\net8.0-windows\mod\$(ModName)\" />
+		<ModBinRoot Include="$(ProjectDir)..\VPet-Simulator.Windows\bin\x86\Release\net8.0-windows\mod\$(ModName)\" />
+	</ItemGroup>
+	<Target Name="DeployToModFolder" AfterTargets="Build">
+		<ItemGroup>
+			<ModDeployFiles Include="$(TargetDir)*.exe" />
+			<ModDeployFiles Include="$(TargetDir)*.exe.config" />
+			<ModDeployFiles Include="$(TargetDir)*.dll" />
+			<ModDeployFiles Include="$(TargetDir)*.pdb" />
+		</ItemGroup>
+
+		<MakeDir Directories="$(SourceModRoot)plugin\$(BridgeSubDir)" Condition="!Exists('$(SourceModRoot)plugin\$(BridgeSubDir)')" />
+		<Copy SourceFiles="@(ModDeployFiles)" DestinationFolder="$(SourceModRoot)plugin\$(BridgeSubDir)" SkipUnchangedFiles="true" />
+
+		<ItemGroup>
+			<ExistingModBinRoot Include="@(ModBinRoot)" Condition="Exists('%(Identity)..\..\')" />
+		</ItemGroup>
+		<MakeDir Directories="%(ExistingModBinRoot.Identity)plugin\$(BridgeSubDir)" Condition="!Exists('%(ExistingModBinRoot.Identity)plugin\$(BridgeSubDir)')" />
+		<Copy SourceFiles="@(ModDeployFiles)" DestinationFolder="%(ExistingModBinRoot.Identity)plugin\$(BridgeSubDir)" SkipUnchangedFiles="true" Condition="'%(ExistingModBinRoot.Identity)' != ''" />
+	</Target>
+
+</Project>

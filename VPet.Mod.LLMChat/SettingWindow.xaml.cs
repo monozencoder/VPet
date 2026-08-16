@@ -59,6 +59,14 @@ namespace VPet.Mod.LLMChat
             tbTtsOpenAiModel.Text = settings.OpenAiTtsModel;
             tbTtsOpenAiVoice.Text = settings.OpenAiTtsVoice;
             UpdateTtsOpenAiKeyLabel();
+
+            tbAiVoiceInstallDir.Text = settings.AiVoiceInstallDir;
+            cbAiVoicePreset.Items.Clear();
+            cbAiVoicePreset.Items.Add(string.IsNullOrWhiteSpace(settings.AiVoicePresetName)
+                ? new ComboBoxItem { Content = "(未取得。「一覧取得」で選択可能。空欄のままだとEditor側で選択中のボイスを使用)", Tag = "" }
+                : new ComboBoxItem { Content = $"{settings.AiVoicePresetName} (未取得。「一覧取得」で選択可能)", Tag = settings.AiVoicePresetName });
+            cbAiVoicePreset.SelectedIndex = 0;
+
             UpdateTtsProviderVisibility();
 
             cbVoiceInputEnabled.IsChecked = settings.VoiceInputEnabled;
@@ -88,9 +96,10 @@ namespace VPet.Mod.LLMChat
         {
             if (cbTtsProvider.SelectedItem == null)
                 return;
-            var isOpenAi = SelectedTtsProvider == TtsProviderKind.OpenAi;
-            spVoicevoxSettings.Visibility = isOpenAi ? Visibility.Collapsed : Visibility.Visible;
-            spOpenAiTtsSettings.Visibility = isOpenAi ? Visibility.Visible : Visibility.Collapsed;
+            var provider = SelectedTtsProvider;
+            spVoicevoxSettings.Visibility = provider == TtsProviderKind.Voicevox ? Visibility.Visible : Visibility.Collapsed;
+            spOpenAiTtsSettings.Visibility = provider == TtsProviderKind.OpenAi ? Visibility.Visible : Visibility.Collapsed;
+            spAiVoiceSettings.Visibility = provider == TtsProviderKind.AiVoice ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void cbTtsProvider_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -141,6 +150,8 @@ namespace VPet.Mod.LLMChat
                 settings.OpenAiTtsModel = tbTtsOpenAiModel.Text.Trim();
             if (!string.IsNullOrWhiteSpace(tbTtsOpenAiVoice.Text))
                 settings.OpenAiTtsVoice = tbTtsOpenAiVoice.Text.Trim();
+            settings.AiVoiceInstallDir = tbAiVoiceInstallDir.Text?.Trim() ?? "";
+            settings.AiVoicePresetName = SelectedAiVoicePresetName ?? "";
 
             settings.VoiceInputEnabled = cbVoiceInputEnabled.IsChecked == true;
             settings.VoiceInputAutoSend = cbVoiceInputAutoSend.IsChecked == true;
@@ -172,6 +183,46 @@ namespace VPet.Mod.LLMChat
 
         private int SelectedVoiceSpeakerId =>
             cbVoiceSpeaker.SelectedItem is ComboBoxItem item && item.Tag is int id ? id : settings.VoiceSpeakerId;
+
+        private string SelectedAiVoicePresetName =>
+            cbAiVoicePreset.SelectedItem is ComboBoxItem item && item.Tag is string name ? name : settings.AiVoicePresetName;
+
+        private async void btnFetchAiVoicePresets_Click(object sender, RoutedEventArgs e)
+        {
+            btnFetchAiVoicePresets.IsEnabled = false;
+            tbVoiceStatus.Text = "取得中...(A.I.VOICE Editorの起動待ちで時間がかかる場合があります)";
+            try
+            {
+                var client = new AiVoiceClient(tbAiVoiceInstallDir.Text);
+                var response = await client.GetPresetsAsync(CancellationToken.None);
+                var presets = response.Presets ?? Array.Empty<string>();
+
+                cbAiVoicePreset.Items.Clear();
+                foreach (var preset in presets)
+                    cbAiVoicePreset.Items.Add(new ComboBoxItem { Content = preset, Tag = preset });
+
+                foreach (ComboBoxItem item in cbAiVoicePreset.Items)
+                {
+                    if ((string)item.Tag == settings.AiVoicePresetName)
+                    {
+                        cbAiVoicePreset.SelectedItem = item;
+                        break;
+                    }
+                }
+                if (cbAiVoicePreset.SelectedItem == null && cbAiVoicePreset.Items.Count > 0)
+                    cbAiVoicePreset.SelectedIndex = 0;
+
+                tbVoiceStatus.Text = $"{presets.Length}件のボイスを取得しました";
+            }
+            catch (Exception ex)
+            {
+                tbVoiceStatus.Text = $"取得失敗: {ex.Message}";
+            }
+            finally
+            {
+                btnFetchAiVoicePresets.IsEnabled = true;
+            }
+        }
 
         private async void btnFetchSpeakers_Click(object sender, RoutedEventArgs e)
         {
@@ -226,6 +277,10 @@ namespace VPet.Mod.LLMChat
                     return;
                 }
                 testVoicePlayer.SpeakForTestOpenAi("こんにちは、よろしくね！", tbTtsOpenAiModel.Text, tbTtsOpenAiVoice.Text, apiKey, OnSuccess, OnError);
+            }
+            else if (SelectedTtsProvider == TtsProviderKind.AiVoice)
+            {
+                testVoicePlayer.SpeakForTestAiVoice("こんにちは、よろしくね！", tbAiVoiceInstallDir.Text, SelectedAiVoicePresetName, OnSuccess, OnError);
             }
             else
             {

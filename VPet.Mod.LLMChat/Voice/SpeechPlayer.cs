@@ -7,7 +7,7 @@ using NAudio.Wave;
 namespace VPet.Mod.LLMChat.Voice
 {
     /// <summary>
-    /// 設定されたプロバイダー(VOICEVOX/OpenAI)でテキストを音声合成し再生する。
+    /// 設定されたプロバイダー(VOICEVOX/OpenAI/A.I.VOICE)でテキストを音声合成し再生する。
     /// 音声はあくまで補助機能のため、エンジン未起動や通信エラーが発生してもチャット自体は止めず、静かに諦める。
     /// </summary>
     public class SpeechPlayer
@@ -29,44 +29,46 @@ namespace VPet.Mod.LLMChat.Voice
             if (settings == null || !settings.VoiceEnabled || string.IsNullOrWhiteSpace(text))
                 return;
 
-            if (settings.TtsProvider == TtsProviderKind.OpenAi)
+            switch (settings.TtsProvider)
             {
-                var apiKey = CredentialStore.Load(LLMChatSettings.OpenAiTtsCredentialKey) ?? string.Empty;
-                SpeakWith(text, TtsProviderKind.OpenAi, null, 0, settings.OpenAiTtsModel, settings.OpenAiTtsVoice, apiKey, null, null);
-            }
-            else
-            {
-                SpeakWith(text, TtsProviderKind.Voicevox, settings.VoiceEndpoint, settings.VoiceSpeakerId, null, null, null, null, null);
+                case TtsProviderKind.OpenAi:
+                    var apiKey = CredentialStore.Load(LLMChatSettings.OpenAiTtsCredentialKey) ?? string.Empty;
+                    SpeakWith(text, ct => new OpenAiTtsClient().SynthesizeAsync(text, apiKey, settings.OpenAiTtsModel, settings.OpenAiTtsVoice, ct));
+                    break;
+                case TtsProviderKind.AiVoice:
+                    SpeakWith(text, ct => new AiVoiceClient(settings.AiVoiceInstallDir).SynthesizeAsync(text, settings.AiVoicePresetName, ct));
+                    break;
+                default:
+                    SpeakWith(text, ct => new VoicevoxClient(settings.VoiceEndpoint).SynthesizeAsync(text, settings.VoiceSpeakerId, ct));
+                    break;
             }
         }
 
         /// <summary>設定の有効フラグに関わらず、指定内容でVOICEVOXの試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
-        public void SpeakForTestVoicevox(string text, string endpoint, int speakerId, Action onSuccess = null, Action<string> onError = null)
-        {
-            SpeakWith(text, TtsProviderKind.Voicevox, endpoint, speakerId, null, null, null, onSuccess, onError);
-        }
+        public void SpeakForTestVoicevox(string text, string endpoint, int speakerId, Action onSuccess = null, Action<string> onError = null) =>
+            SpeakWith(text, ct => new VoicevoxClient(endpoint).SynthesizeAsync(text, speakerId, ct), onSuccess, onError);
 
         /// <summary>設定の有効フラグに関わらず、指定内容でOpenAI TTSの試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
-        public void SpeakForTestOpenAi(string text, string model, string voice, string apiKey, Action onSuccess = null, Action<string> onError = null)
-        {
-            SpeakWith(text, TtsProviderKind.OpenAi, null, 0, model, voice, apiKey, onSuccess, onError);
-        }
+        public void SpeakForTestOpenAi(string text, string model, string voice, string apiKey, Action onSuccess = null, Action<string> onError = null) =>
+            SpeakWith(text, ct => new OpenAiTtsClient().SynthesizeAsync(text, apiKey, model, voice, ct), onSuccess, onError);
 
-        private void SpeakWith(string text, TtsProviderKind provider, string endpoint, int speakerId, string model, string voice, string apiKey, Action onSuccess, Action<string> onError)
+        /// <summary>設定の有効フラグに関わらず、指定内容でA.I.VOICEの試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
+        public void SpeakForTestAiVoice(string text, string installDir, string presetName, Action onSuccess = null, Action<string> onError = null) =>
+            SpeakWith(text, ct => new AiVoiceClient(installDir).SynthesizeAsync(text, presetName, ct), onSuccess, onError);
+
+        private void SpeakWith(string text, Func<CancellationToken, Task<byte[]>> synthesize, Action onSuccess = null, Action<string> onError = null)
         {
             Stop();
             var cts = new CancellationTokenSource();
             currentCts = cts;
-            _ = SpeakAsync(text, provider, endpoint, speakerId, model, voice, apiKey, onSuccess, onError, cts.Token);
+            _ = SpeakAsync(synthesize, onSuccess, onError, cts.Token);
         }
 
-        private async Task SpeakAsync(string text, TtsProviderKind provider, string endpoint, int speakerId, string model, string voice, string apiKey, Action onSuccess, Action<string> onError, CancellationToken cancellationToken)
+        private async Task SpeakAsync(Func<CancellationToken, Task<byte[]>> synthesize, Action onSuccess, Action<string> onError, CancellationToken cancellationToken)
         {
             try
             {
-                var wav = provider == TtsProviderKind.OpenAi
-                    ? await new OpenAiTtsClient().SynthesizeAsync(text, apiKey, model, voice, cancellationToken).ConfigureAwait(false)
-                    : await new VoicevoxClient(endpoint).SynthesizeAsync(text, speakerId, cancellationToken).ConfigureAwait(false);
+                var wav = await synthesize(cancellationToken).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
                     return;
                 Play(wav);

@@ -58,6 +58,7 @@
                 <ComboBox Name="cbTtsProvider" Width="180" Margin="6,0,0,0" SelectionChanged="cbTtsProvider_SelectionChanged">
                     <ComboBoxItem Content="VOICEVOX (ローカル)" Tag="Voicevox"/>
                     <ComboBoxItem Content="OpenAI TTS (クラウドAPI)" Tag="OpenAi"/>
+                    <ComboBoxItem Content="A.I.VOICE (ローカル)" Tag="AiVoice"/>
                 </ComboBox>
             </StackPanel>
 
@@ -72,6 +73,19 @@
                     <Button Name="btnFetchSpeakers" Content="一覧取得" Click="btnFetchSpeakers_Click"/>
                 </StackPanel>
                 <TextBlock Text="※事前にVOICEVOXアプリ/ENGINEを起動しておく必要があります" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <StackPanel Name="spAiVoiceSettings" Margin="20,6,0,0" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="インストール先:" VerticalAlignment="Center"/>
+                    <TextBox Name="tbAiVoiceInstallDir" Width="180" Margin="6,0,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <TextBlock Text="ボイス:" VerticalAlignment="Center"/>
+                    <ComboBox Name="cbAiVoicePreset" Width="170" Margin="6,0,6,0"/>
+                    <Button Name="btnFetchAiVoicePresets" Content="一覧取得" Click="btnFetchAiVoicePresets_Click"/>
+                </StackPanel>
+                <TextBlock Text="※事前にA.I.VOICE Editorをインストールしておく必要があります。インストール先は既定の場所を自動検出するため空欄のままで構いません。未起動の場合は自動で起動します(最大1分ほど)。起動時のウィンドウは自動的に最小化されます" Foreground="Gray" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
             <StackPanel Name="spOpenAiTtsSettings" Margin="20,6,0,0" Visibility="Collapsed">

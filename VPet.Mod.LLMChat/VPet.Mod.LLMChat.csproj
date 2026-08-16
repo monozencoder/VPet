@@ -26,6 +26,12 @@
 		<ProjectReference Include="..\VPet-Simulator.Core\VPet-Simulator.Core.csproj" Private="false" />
 		<ProjectReference Include="..\VPet-Simulator.Windows.Interface\VPet-Simulator.Windows.Interface.csproj" Private="false" />
 		<!--
+			A.I.VOICE連携用の仲介プロセス(net48、AiVoiceClientが実行時に外部プロセスとして起動する)。
+			本体からAPIとして参照はしないためReferenceOutputAssembly=falseとし、ビルド順序の連携のみ行う。
+			成果物のexeは自身のDeployToModFolderターゲットでこのMODと同じpluginフォルダへ配置される。
+		-->
+		<ProjectReference Include="..\VPet.Mod.LLMChat.AiVoiceBridge\VPet.Mod.LLMChat.AiVoiceBridge.csproj" ReferenceOutputAssembly="false" />
+		<!--
 			本体がNAudioを参照しているとはいえ、WaveInEvent等が含まれるNAudio.WinMM.dllは
 			本体の通常動作では実際にロードされないことがあるため、確実に動くようこのMOD自身の
 			plugin フォルダにも同梱する(Private=true、既定値のため明示指定なし)

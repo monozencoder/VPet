@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VPet-Simulator.Windows.Inte
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VPet.Mod.LLMChat", "VPet.Mod.LLMChat\VPet.Mod.LLMChat.csproj", "{A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VPet.Mod.LLMChat.AiVoiceBridge", "VPet.Mod.LLMChat.AiVoiceBridge\VPet.Mod.LLMChat.AiVoiceBridge.csproj", "{B51AE207-67E9-4645-9CBD-C99EAA8032FA}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{954E332A-9785-4B38-9C5E-C8262E83C30E}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
@@ -102,6 +104,18 @@ Global
 		{A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}.Release|x64.Build.0 = Release|Any CPU
 		{A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}.Release|x86.ActiveCfg = Release|Any CPU
 		{A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}.Release|x86.Build.0 = Release|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Debug|x64.Build.0 = Debug|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Debug|x86.Build.0 = Debug|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Release|x64.ActiveCfg = Release|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Release|x64.Build.0 = Release|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Release|x86.ActiveCfg = Release|Any CPU
+		{B51AE207-67E9-4645-9CBD-C99EAA8032FA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
