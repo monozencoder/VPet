@@ -61,8 +61,8 @@
         <StackPanel Grid.Row="6" Margin="0,0,0,10">
             <CheckBox Name="cbProactiveEnabled" Content="ときどき自分から話しかける" FontWeight="Bold"/>
             <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                <TextBlock Text="間隔(分):" VerticalAlignment="Center"/>
-                <TextBox Name="tbProactiveInterval" Width="50" Margin="6,0,16,0"/>
+                <TextBlock Text="間隔(秒):" VerticalAlignment="Center"/>
+                <TextBox Name="tbProactiveInterval" Width="60" Margin="6,0,16,0"/>
                 <TextBlock Text="確率(%):" VerticalAlignment="Center"/>
                 <TextBox Name="tbProactiveChance" Width="50" Margin="6,0,0,0"/>
             </StackPanel>

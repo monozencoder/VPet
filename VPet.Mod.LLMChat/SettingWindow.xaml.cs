@@ -41,7 +41,7 @@ namespace VPet.Mod.LLMChat
             tbCustomEndpoint.Text = settings.CustomEndpoint;
             tbSystemPrompt.Text = settings.SystemPrompt;
             cbProactiveEnabled.IsChecked = settings.ProactiveChatEnabled;
-            tbProactiveInterval.Text = settings.ProactiveChatIntervalMinutes.ToString();
+            tbProactiveInterval.Text = settings.ProactiveChatIntervalSeconds.ToString();
             tbProactiveChance.Text = settings.ProactiveChatChancePercent.ToString();
 
             cbVoiceEnabled.IsChecked = settings.VoiceEnabled;
@@ -223,7 +223,7 @@ namespace VPet.Mod.LLMChat
             settings.CustomEndpoint = tbCustomEndpoint.Text?.Trim();
             settings.SystemPrompt = tbSystemPrompt.Text;
             settings.ProactiveChatEnabled = cbProactiveEnabled.IsChecked == true;
-            settings.ProactiveChatIntervalMinutes = ParseIntOrDefault(tbProactiveInterval.Text, 1, 1440, settings.ProactiveChatIntervalMinutes);
+            settings.ProactiveChatIntervalSeconds = ParseIntOrDefault(tbProactiveInterval.Text, 15, 86400, settings.ProactiveChatIntervalSeconds);
             settings.ProactiveChatChancePercent = ParseIntOrDefault(tbProactiveChance.Text, 0, 100, settings.ProactiveChatChancePercent);
 
             settings.VoiceEnabled = cbVoiceEnabled.IsChecked == true;

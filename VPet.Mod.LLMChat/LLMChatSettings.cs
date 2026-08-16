@@ -46,8 +46,8 @@ namespace VPet.Mod.LLMChat
 
         /// <summary>ときどきキャラクターから自発的に話しかけるか</summary>
         public bool ProactiveChatEnabled { get; set; } = false;
-        /// <summary>自発的な会話をチェックする間隔(分)</summary>
-        public int ProactiveChatIntervalMinutes { get; set; } = 20;
+        /// <summary>自発的な会話をチェックする間隔(秒)</summary>
+        public int ProactiveChatIntervalSeconds { get; set; } = 1200;
         /// <summary>間隔が経過した時に実際に話しかける確率(%)</summary>
         public int ProactiveChatChancePercent { get; set; } = 40;
 

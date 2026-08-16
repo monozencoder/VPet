@@ -36,7 +36,7 @@ namespace VPet.Mod.LLMChat
         {
             if (Settings == null || !Settings.ProactiveChatEnabled)
                 return;
-            if (DateTime.Now - lastProactiveCheck < TimeSpan.FromMinutes(Math.Max(1, Settings.ProactiveChatIntervalMinutes)))
+            if (DateTime.Now - lastProactiveCheck < TimeSpan.FromSeconds(Math.Max(15, Settings.ProactiveChatIntervalSeconds)))
                 return;
             lastProactiveCheck = DateTime.Now;
 
