@@ -396,15 +396,25 @@ namespace VPet_Simulator.Core
         public Action DefaultPressAction;
         public bool isPress = false;
         long presstime;
+        /// <summary>
+        /// 上次放开拖拽(下落动画开始)的时间, 用于放开后短时间内再次抓取时跳过长按等待
+        /// </summary>
+        DateTime lastRaiseReleaseTime = DateTime.MinValue;
+        /// <summary>
+        /// 放开拖拽后, 该时间内再次按下可以直接继续拖拽, 无需等待长按判定
+        /// </summary>
+        const double QuickRegrabWindowMs = 500;
         private void MainGrid_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             isPress = true;
             CountNomal = 0;
+            bool quickRegrab = (DateTime.Now - lastRaiseReleaseTime).TotalMilliseconds < QuickRegrabWindowMs;
             Task.Run(() =>
             {
                 var pth = DateTime.Now.Ticks;
                 presstime = pth;
-                Thread.Sleep(Core.Controller.PressLength);
+                if (!quickRegrab)
+                    Thread.Sleep(Core.Controller.PressLength);
                 Point mp = default;
                 Dispatcher.BeginInvoke(new Action(() => mp = Mouse.GetPosition(MainGrid))).Wait();
                 //mp = new Point(mp.X * Core.Controller.ZoomRatio, mp.Y * Core.Controller.ZoomRatio);
@@ -447,6 +457,7 @@ namespace VPet_Simulator.Core
                 MainGrid.MouseMove -= MainGrid_MouseMove;
                 MainGrid.MouseMove += MainGrid_MouseWave;
                 rasetype = -1;
+                lastRaiseReleaseTime = DateTime.Now;
                 DisplayRaising();
             }
             else
@@ -473,6 +484,7 @@ namespace VPet_Simulator.Core
                 MainGrid.MouseMove -= MainGrid_MouseMove;
                 MainGrid.MouseMove += MainGrid_MouseWave;
                 rasetype = -1;
+                lastRaiseReleaseTime = DateTime.Now;
                 DisplayRaising();
                 return;
             }
@@ -625,13 +637,17 @@ namespace VPet_Simulator.Core
         }
 
         /// <summary>
-        /// 判断屏幕坐标(设备无关像素)是否落在需要正常接收点击的内容上,用于点击穿透判定。
+        /// 判断某一点(相对于本控件, 设备无关像素)是否落在需要正常接收点击的内容上,用于点击穿透判定。
         /// 先做常规(基于包围盒)的命中测试: 命中工具栏/按钮/消息框等桌宠贴图以外的UI时,始终视为不透明(照常接收点击)。
         /// 只有命中的是桌宠贴图本身时,才进一步按该像素的alpha值判断是否透明。
         /// 无法判断时保守地视为不透明,避免误穿透导致点不到桌宠或UI
         /// </summary>
-        /// <param name="screenPoint">屏幕坐标(设备无关像素)</param>
-        public bool IsOpaqueAtScreenPoint(Point screenPoint)
+        /// <remarks>
+        /// 坐标使用相对于本控件的可视化树内换算(TranslatePoint),而不是绝对屏幕坐标,
+        /// 这样在多显示器且各显示器DPI缩放不同(例如拔掉主显示器后切换到副显示器)时也不会算错。
+        /// </remarks>
+        /// <param name="point">相对于本控件(Main)的坐标(设备无关像素)</param>
+        public bool IsOpaqueAt(Point point)
         {
             if (!IsVisible)
                 return true;
@@ -640,7 +656,7 @@ namespace VPet_Simulator.Core
             DependencyObject hitVisual;
             try
             {
-                local = MainGrid.PointFromScreen(screenPoint);
+                local = this.TranslatePoint(point, MainGrid);
                 hitVisual = VisualTreeHelper.HitTest(MainGrid, local)?.VisualHit;
             }
             catch

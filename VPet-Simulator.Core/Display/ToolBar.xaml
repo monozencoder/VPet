@@ -139,5 +139,21 @@
                 <MenuItem x:Name="MenuMODConfig" x:FieldModifier="public" Header="{ll:Str MOD设置}" Visibility="Collapsed" />
             </MenuItem>
         </Menu>
+        <Border x:Name="BdrDragHandle" Width="30" Height="30" Margin="0,0,10,65" HorizontalAlignment="Right"
+                VerticalAlignment="Bottom" Background="{DynamicResource DARKPrimaryText}"
+                BorderBrush="{DynamicResource DARKPrimaryDarker}" BorderThickness="1" CornerRadius="15"
+                Cursor="SizeAll" ToolTip="{ll:Str 按住拖动窗口}"
+                PreviewMouseLeftButtonDown="BdrDragHandle_PreviewMouseLeftButtonDown"
+                PreviewMouseMove="BdrDragHandle_PreviewMouseMove"
+                PreviewMouseLeftButtonUp="BdrDragHandle_PreviewMouseLeftButtonUp">
+            <Canvas Width="14" Height="14">
+                <Rectangle Canvas.Left="2" Canvas.Top="6" Width="10" Height="2" Fill="{DynamicResource DARKPrimary}" />
+                <Rectangle Canvas.Left="6" Canvas.Top="2" Width="2" Height="10" Fill="{DynamicResource DARKPrimary}" />
+                <Polygon Points="7,0 4,4 10,4" Fill="{DynamicResource DARKPrimary}" />
+                <Polygon Points="7,14 4,10 10,10" Fill="{DynamicResource DARKPrimary}" />
+                <Polygon Points="0,7 4,4 4,10" Fill="{DynamicResource DARKPrimary}" />
+                <Polygon Points="14,7 10,4 10,10" Fill="{DynamicResource DARKPrimary}" />
+            </Canvas>
+        </Border>
     </Grid>
 </UserControl>

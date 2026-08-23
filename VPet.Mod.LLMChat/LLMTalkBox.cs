@@ -139,7 +139,7 @@ namespace VPet.Mod.LLMChat
             activeRequestCts = cts;
 
             DisplayThink();
-            var userMessage = new ChatMessage("user", "（少し時間が経ちました。あなたから飼い主に一言、自然に話しかけてください。挨拶や近況、思ったことなど、短く自然な一言で構いません。）");
+            var userMessage = new ChatMessage("user", ProactiveChatPrompts.BuildInstruction());
             history.Add(userMessage);
             TrimHistory();
 

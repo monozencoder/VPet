@@ -919,22 +919,46 @@ namespace VPet_Simulator.Windows
                 return;
             }
 
-            if (!Win32.User32.GetCursorPos(out var pt))
-                return;
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget == null)
-                return;
-            var screenPoint = source.CompositionTarget.TransformFromDevice.Transform(new Point(pt.X, pt.Y));
-
-            bool inside = screenPoint.X >= Left && screenPoint.X < Left + ActualWidth &&
-                          screenPoint.Y >= Top && screenPoint.Y < Top + ActualHeight;
-            if (!inside)
+            try
             {
-                SetPixelTransparent(false);
-                return;
-            }
+                if (!Win32.User32.GetCursorPos(out var pt))
+                    return;
 
-            SetPixelTransparent(!Main.IsOpaqueAtScreenPoint(screenPoint));
+                //先用 ScreenToClient 把鼠标的绝对屏幕坐标(物理像素)转换成相对本窗口客户区的坐标(物理像素),
+                //该换算只依赖本窗口自身所在的显示器,不涉及其他显示器的分辨率/DPI/排列方式,
+                //因此在"主显示器被拔掉、窗口显示到另一台显示器"这种场景下也不会因为跨屏坐标换算出错
+                //而导致误判(常见误判方向是整个窗口一直被判定为透明,鼠标点击全部穿透,桌宠彻底无法点击)。
+                if (!Win32.User32.ScreenToClient(_hwnd, ref pt))
+                {
+                    SetPixelTransparent(false);
+                    return;
+                }
+
+                var source = PresentationSource.FromVisual(this);
+                if (source?.CompositionTarget == null)
+                {
+                    SetPixelTransparent(false);
+                    return;
+                }
+                var localPoint = source.CompositionTarget.TransformFromDevice.Transform(new Point(pt.X, pt.Y));
+
+                bool inside = localPoint.X >= 0 && localPoint.X < ActualWidth &&
+                              localPoint.Y >= 0 && localPoint.Y < ActualHeight;
+                if (!inside)
+                {
+                    SetPixelTransparent(false);
+                    return;
+                }
+
+                var mainPoint = this.TranslatePoint(localPoint, Main);
+                SetPixelTransparent(!Main.IsOpaqueAt(mainPoint));
+            }
+            catch
+            {
+                //任何一步出现异常时保守地关闭穿透(照常接收点击),避免因为个别API调用失败
+                //导致窗口停留在"全窗口穿透"状态而彻底无法点击
+                SetPixelTransparent(false);
+            }
         }
         /// <summary>
         /// 根据当前窗口实际扩展样式,按需开启/关闭 WS_EX_TRANSPARENT(避免与手动整窗穿透互相覆盖状态)

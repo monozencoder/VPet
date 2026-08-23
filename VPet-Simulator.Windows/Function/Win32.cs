@@ -333,6 +333,15 @@ namespace VPet_Simulator.Windows
             [return: MarshalAs(UnmanagedType.Bool)]
             public static extern bool GetCursorPos(out POINT lpPoint);
 
+            /// <summary>
+            /// 将屏幕坐标(物理像素)转换为指定窗口客户区内的坐标(物理像素)。
+            /// 与直接对绝对屏幕坐标做DPI换算不同,该换算只依赖目标窗口自身,
+            /// 在多显示器且各显示器DPI缩放不同时也能得到正确结果。
+            /// </summary>
+            [DllImport(LibraryName)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            public static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
             public const string LibraryName = "user32";
         }
 

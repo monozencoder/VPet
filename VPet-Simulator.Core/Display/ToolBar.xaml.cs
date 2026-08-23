@@ -426,6 +426,41 @@ namespace VPet_Simulator.Core
             closePanelTimer.Dispose();
         }
 
+        /// <summary>
+        /// 拖动手柄: 上次记录的鼠标位置(屏幕坐标, 不随窗口移动而失真), 用于计算拖动窗口的位移量
+        /// </summary>
+        Point? dragHandleLastScreenPoint;
+        private void BdrDragHandle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            dragHandleLastScreenPoint = PointToScreen(e.GetPosition(this));
+            ((UIElement)sender).CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void BdrDragHandle_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (dragHandleLastScreenPoint == null || e.LeftButton != MouseButtonState.Pressed)
+                return;
+            var p = PointToScreen(e.GetPosition(this));
+            var dx = p.X - dragHandleLastScreenPoint.Value.X;
+            var dy = p.Y - dragHandleLastScreenPoint.Value.Y;
+            dragHandleLastScreenPoint = p;
+            if (dx != 0 || dy != 0)
+            {
+                //MoveWindows内部会再乘一次ZoomRatio, 这里先除掉, 使拖动手柄始终按屏幕像素1:1跟手, 不受缩放比例影响
+                var zoom = m.Core.Controller.ZoomRatio;
+                m.Core.Controller.MoveWindows(dx / zoom, dy / zoom);
+            }
+            e.Handled = true;
+        }
+
+        private void BdrDragHandle_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            dragHandleLastScreenPoint = null;
+            ((UIElement)sender).ReleaseMouseCapture();
+            e.Handled = true;
+        }
+
         private void Sleep_Click(object sender, RoutedEventArgs e)
         {
             if (m.State == Main.WorkingState.Sleep)
