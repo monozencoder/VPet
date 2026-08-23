@@ -29,6 +29,9 @@ namespace VPet.Mod.LLMChat
         OpenAi,
         /// <summary>ローカルにインストールされたA.I.VOICE Editor</summary>
         AiVoice,
+        //既存の設定ファイルはenumを数値のまま保存しているため、TtsProviderKind列挙値は必ず末尾に追加すること
+        /// <summary>ローカルで起動するAivisSpeech Engine(VOICEVOX ENGINE互換API)</summary>
+        AivisSpeech,
     }
 
     /// <summary>
@@ -61,6 +64,34 @@ namespace VPet.Mod.LLMChat
         public string VoiceEndpoint { get; set; } = "http://127.0.0.1:50021";
         /// <summary>読み上げに使うVOICEVOXの話者スタイルID(設定画面の「話者一覧を取得」で選択)</summary>
         public int VoiceSpeakerId { get; set; } = 3;
+        /// <summary>AivisSpeech Engineのエンドポイント(事前に起動しておく必要あり)</summary>
+        public string AivisSpeechEndpoint { get; set; } = "http://127.0.0.1:10101";
+        /// <summary>読み上げに使うAivisSpeechの話者スタイルID(設定画面の「話者一覧を取得」で選択)</summary>
+        public int AivisSpeechSpeakerId { get; set; } = 0;
+        /// <summary>
+        /// 読み上げに使うAivisSpeechのプリセットID(設定画面の「プリセット一覧を取得」で選択)。
+        /// nullの場合はプリセットを使わず、AivisSpeechSpeakerIdの話者スタイルをそのまま使用する
+        /// </summary>
+        public int? AivisSpeechPresetId { get; set; } = null;
+        /// <summary>AivisSpeechPresetIdが指すプリセットに紐づく話者スタイルID(/synthesis呼び出し用に保持)</summary>
+        public int AivisSpeechPresetStyleId { get; set; } = 0;
+
+        /// <summary>
+        /// VOICEVOX/AivisSpeech共通の話速・音高等の詳細設定。AivisSpeechでプリセットを選択している場合は
+        /// プリセット側の値が優先され、この設定は無視される
+        /// </summary>
+        public double VoiceSpeedScale { get; set; } = 1.0;
+        public double VoicePitchScale { get; set; } = 0.0;
+        /// <summary>抑揚・感情表現の強さ(intonationScale)</summary>
+        public double VoiceIntonationScale { get; set; } = 1.0;
+        /// <summary>テンポの緩急(tempoDynamicsScale)。AivisSpeech固有でVOICEVOXでは無視される</summary>
+        public double VoiceTempoDynamicsScale { get; set; } = 1.0;
+        /// <summary>合成時の音量倍率(volumeScale)。上の「音量」(再生音量)とは別のパラメータ</summary>
+        public double VoiceVolumeScale { get; set; } = 1.0;
+        /// <summary>開始無音(秒)</summary>
+        public double VoicePrePhonemeLength { get; set; } = 0.1;
+        /// <summary>終了無音(秒)</summary>
+        public double VoicePostPhonemeLength { get; set; } = 0.1;
         /// <summary>OpenAI TTSで使うモデル名</summary>
         public string OpenAiTtsModel { get; set; } = "gpt-4o-mini-tts";
         /// <summary>OpenAI TTSで使う音声名(alloy, echo, fable, onyx, nova, shimmer等)</summary>

@@ -43,15 +43,40 @@ namespace VPet.Mod.LLMChat.Voice
                 case TtsProviderKind.AiVoice:
                     SpeakWith(text, ct => new AiVoiceClient(settings.AiVoiceInstallDir).SynthesizeAsync(text, settings.AiVoicePresetName, ct));
                     break;
+                case TtsProviderKind.AivisSpeech:
+                    if (settings.AivisSpeechPresetId is int presetId)
+                        SpeakWith(text, ct => new VoicevoxClient(settings.AivisSpeechEndpoint).SynthesizeWithPresetAsync(text, presetId, settings.AivisSpeechPresetStyleId, ct));
+                    else
+                        SpeakWith(text, ct => new VoicevoxClient(settings.AivisSpeechEndpoint).SynthesizeAsync(text, settings.AivisSpeechSpeakerId, BuildAdjustments(settings), ct));
+                    break;
                 default:
-                    SpeakWith(text, ct => new VoicevoxClient(settings.VoiceEndpoint).SynthesizeAsync(text, settings.VoiceSpeakerId, ct));
+                    SpeakWith(text, ct => new VoicevoxClient(settings.VoiceEndpoint).SynthesizeAsync(text, settings.VoiceSpeakerId, BuildAdjustments(settings), ct));
                     break;
             }
         }
 
+        private static VoicevoxSynthesisAdjustments BuildAdjustments(LLMChatSettings settings) => new VoicevoxSynthesisAdjustments
+        {
+            SpeedScale = settings.VoiceSpeedScale,
+            PitchScale = settings.VoicePitchScale,
+            IntonationScale = settings.VoiceIntonationScale,
+            TempoDynamicsScale = settings.VoiceTempoDynamicsScale,
+            VolumeScale = settings.VoiceVolumeScale,
+            PrePhonemeLength = settings.VoicePrePhonemeLength,
+            PostPhonemeLength = settings.VoicePostPhonemeLength,
+        };
+
         /// <summary>設定の有効フラグに関わらず、指定内容でVOICEVOXの試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
-        public void SpeakForTestVoicevox(string text, string endpoint, int speakerId, Action onSuccess = null, Action<string> onError = null) =>
-            SpeakWith(text, ct => new VoicevoxClient(endpoint).SynthesizeAsync(text, speakerId, ct), onSuccess, onError);
+        public void SpeakForTestVoicevox(string text, string endpoint, int speakerId, VoicevoxSynthesisAdjustments adjustments, Action onSuccess = null, Action<string> onError = null) =>
+            SpeakWith(text, ct => new VoicevoxClient(endpoint).SynthesizeAsync(text, speakerId, adjustments, ct), onSuccess, onError);
+
+        /// <summary>設定の有効フラグに関わらず、指定内容でAivisSpeechの試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
+        public void SpeakForTestAivisSpeech(string text, string endpoint, int speakerId, VoicevoxSynthesisAdjustments adjustments, Action onSuccess = null, Action<string> onError = null) =>
+            SpeakWith(text, ct => new VoicevoxClient(endpoint).SynthesizeAsync(text, speakerId, adjustments, ct), onSuccess, onError);
+
+        /// <summary>設定の有効フラグに関わらず、指定内容でAivisSpeechのプリセットを使った試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
+        public void SpeakForTestAivisSpeechPreset(string text, string endpoint, int presetId, int styleId, Action onSuccess = null, Action<string> onError = null) =>
+            SpeakWith(text, ct => new VoicevoxClient(endpoint).SynthesizeWithPresetAsync(text, presetId, styleId, ct), onSuccess, onError);
 
         /// <summary>設定の有効フラグに関わらず、指定内容でOpenAI TTSの試し読みをする(設定画面のテストボタン用)。結果はonSuccess/onErrorに渡る</summary>
         public void SpeakForTestOpenAi(string text, string model, string voice, string apiKey, Action onSuccess = null, Action<string> onError = null) =>

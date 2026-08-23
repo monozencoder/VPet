@@ -70,6 +70,35 @@ namespace VPet.Mod.LLMChat
             cbVoiceSpeaker.Items.Add(new ComboBoxItem { Content = $"ID: {settings.VoiceSpeakerId} (未取得。「一覧取得」で選択可能)", Tag = settings.VoiceSpeakerId });
             cbVoiceSpeaker.SelectedIndex = 0;
 
+            tbAivisSpeechEndpoint.Text = settings.AivisSpeechEndpoint;
+            cbAivisSpeechSpeaker.Items.Clear();
+            cbAivisSpeechSpeaker.Items.Add(new ComboBoxItem { Content = $"ID: {settings.AivisSpeechSpeakerId} (未取得。「一覧取得」で選択可能)", Tag = settings.AivisSpeechSpeakerId });
+            cbAivisSpeechSpeaker.SelectedIndex = 0;
+
+            cbAivisSpeechPreset.Items.Clear();
+            cbAivisSpeechPreset.Items.Add(new ComboBoxItem { Content = "(使用しない・上の話者のみ使用)", Tag = null });
+            if (settings.AivisSpeechPresetId is int savedPresetId)
+            {
+                cbAivisSpeechPreset.Items.Add(new ComboBoxItem
+                {
+                    Content = $"ID: {savedPresetId} (未取得。「一覧取得」で選択可能)",
+                    Tag = (savedPresetId, settings.AivisSpeechPresetStyleId),
+                });
+                cbAivisSpeechPreset.SelectedIndex = 1;
+            }
+            else
+            {
+                cbAivisSpeechPreset.SelectedIndex = 0;
+            }
+
+            tbVoiceSpeedScale.Text = settings.VoiceSpeedScale.ToString("0.00");
+            tbVoicePitchScale.Text = settings.VoicePitchScale.ToString("0.00");
+            tbVoiceIntonationScale.Text = settings.VoiceIntonationScale.ToString("0.00");
+            tbVoiceTempoDynamicsScale.Text = settings.VoiceTempoDynamicsScale.ToString("0.00");
+            tbVoiceVolumeScale.Text = settings.VoiceVolumeScale.ToString("0.00");
+            tbVoicePrePhonemeLength.Text = settings.VoicePrePhonemeLength.ToString("0.00");
+            tbVoicePostPhonemeLength.Text = settings.VoicePostPhonemeLength.ToString("0.00");
+
             tbTtsOpenAiModel.Text = settings.OpenAiTtsModel;
             tbTtsOpenAiVoice.Text = settings.OpenAiTtsVoice;
             UpdateTtsOpenAiKeyLabel();
@@ -118,6 +147,9 @@ namespace VPet.Mod.LLMChat
                 return;
             var provider = SelectedTtsProvider;
             spVoicevoxSettings.Visibility = provider == TtsProviderKind.Voicevox ? Visibility.Visible : Visibility.Collapsed;
+            spAivisSpeechSettings.Visibility = provider == TtsProviderKind.AivisSpeech ? Visibility.Visible : Visibility.Collapsed;
+            spVoiceAdjustments.Visibility = provider == TtsProviderKind.Voicevox || provider == TtsProviderKind.AivisSpeech
+                ? Visibility.Visible : Visibility.Collapsed;
             spOpenAiTtsSettings.Visibility = provider == TtsProviderKind.OpenAi ? Visibility.Visible : Visibility.Collapsed;
             spAiVoiceSettings.Visibility = provider == TtsProviderKind.AiVoice ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -239,6 +271,19 @@ namespace VPet.Mod.LLMChat
             if (!string.IsNullOrWhiteSpace(tbVoiceEndpoint.Text))
                 settings.VoiceEndpoint = tbVoiceEndpoint.Text.Trim();
             settings.VoiceSpeakerId = SelectedVoiceSpeakerId;
+            if (!string.IsNullOrWhiteSpace(tbAivisSpeechEndpoint.Text))
+                settings.AivisSpeechEndpoint = tbAivisSpeechEndpoint.Text.Trim();
+            settings.AivisSpeechSpeakerId = SelectedAivisSpeechSpeakerId;
+            var selectedAivisPreset = SelectedAivisSpeechPreset;
+            settings.AivisSpeechPresetId = selectedAivisPreset.PresetId;
+            settings.AivisSpeechPresetStyleId = selectedAivisPreset.StyleId;
+            settings.VoiceSpeedScale = ParseDoubleOrDefault(tbVoiceSpeedScale.Text, 0.5, 2.0, settings.VoiceSpeedScale);
+            settings.VoicePitchScale = ParseDoubleOrDefault(tbVoicePitchScale.Text, -0.15, 0.15, settings.VoicePitchScale);
+            settings.VoiceIntonationScale = ParseDoubleOrDefault(tbVoiceIntonationScale.Text, 0.0, 2.0, settings.VoiceIntonationScale);
+            settings.VoiceTempoDynamicsScale = ParseDoubleOrDefault(tbVoiceTempoDynamicsScale.Text, 0.0, 2.0, settings.VoiceTempoDynamicsScale);
+            settings.VoiceVolumeScale = ParseDoubleOrDefault(tbVoiceVolumeScale.Text, 0.0, 2.0, settings.VoiceVolumeScale);
+            settings.VoicePrePhonemeLength = ParseDoubleOrDefault(tbVoicePrePhonemeLength.Text, 0.0, 1.5, settings.VoicePrePhonemeLength);
+            settings.VoicePostPhonemeLength = ParseDoubleOrDefault(tbVoicePostPhonemeLength.Text, 0.0, 1.5, settings.VoicePostPhonemeLength);
             if (!string.IsNullOrWhiteSpace(tbTtsOpenAiModel.Text))
                 settings.OpenAiTtsModel = tbTtsOpenAiModel.Text.Trim();
             if (!string.IsNullOrWhiteSpace(tbTtsOpenAiVoice.Text))
@@ -291,6 +336,15 @@ namespace VPet.Mod.LLMChat
 
         private int SelectedVoiceSpeakerId =>
             cbVoiceSpeaker.SelectedItem is ComboBoxItem item && item.Tag is int id ? id : settings.VoiceSpeakerId;
+
+        private int SelectedAivisSpeechSpeakerId =>
+            cbAivisSpeechSpeaker.SelectedItem is ComboBoxItem item && item.Tag is int id ? id : settings.AivisSpeechSpeakerId;
+
+        /// <summary>選択中のAivisSpeechプリセット(未選択時はPresetId=null)</summary>
+        private (int? PresetId, int StyleId) SelectedAivisSpeechPreset =>
+            cbAivisSpeechPreset.SelectedItem is ComboBoxItem item && item.Tag is ValueTuple<int, int> preset
+                ? (preset.Item1, preset.Item2)
+                : (null, 0);
 
         private string SelectedAiVoicePresetName =>
             cbAiVoicePreset.SelectedItem is ComboBoxItem item && item.Tag is string name ? name : settings.AiVoicePresetName;
@@ -368,6 +422,78 @@ namespace VPet.Mod.LLMChat
             }
         }
 
+        private async void btnFetchAivisSpeechSpeakers_Click(object sender, RoutedEventArgs e)
+        {
+            btnFetchAivisSpeechSpeakers.IsEnabled = false;
+            tbVoiceStatus.Text = "取得中...";
+            try
+            {
+                var client = new VoicevoxClient(tbAivisSpeechEndpoint.Text);
+                var speakers = await client.GetSpeakersAsync(CancellationToken.None);
+
+                cbAivisSpeechSpeaker.Items.Clear();
+                foreach (var style in speakers)
+                    cbAivisSpeechSpeaker.Items.Add(new ComboBoxItem { Content = style.ToString(), Tag = style.Id });
+
+                foreach (ComboBoxItem item in cbAivisSpeechSpeaker.Items)
+                {
+                    if ((int)item.Tag == settings.AivisSpeechSpeakerId)
+                    {
+                        cbAivisSpeechSpeaker.SelectedItem = item;
+                        break;
+                    }
+                }
+                if (cbAivisSpeechSpeaker.SelectedItem == null && cbAivisSpeechSpeaker.Items.Count > 0)
+                    cbAivisSpeechSpeaker.SelectedIndex = 0;
+
+                tbVoiceStatus.Text = $"{speakers.Count}件のスタイルを取得しました";
+            }
+            catch (Exception ex)
+            {
+                tbVoiceStatus.Text = $"取得失敗: {ex.Message}";
+            }
+            finally
+            {
+                btnFetchAivisSpeechSpeakers.IsEnabled = true;
+            }
+        }
+
+        private async void btnFetchAivisSpeechPresets_Click(object sender, RoutedEventArgs e)
+        {
+            btnFetchAivisSpeechPresets.IsEnabled = false;
+            tbVoiceStatus.Text = "取得中...";
+            try
+            {
+                var client = new VoicevoxClient(tbAivisSpeechEndpoint.Text);
+                var presets = await client.GetPresetsAsync(CancellationToken.None);
+
+                cbAivisSpeechPreset.Items.Clear();
+                cbAivisSpeechPreset.Items.Add(new ComboBoxItem { Content = "(使用しない・上の話者のみ使用)", Tag = null });
+                foreach (var preset in presets)
+                    cbAivisSpeechPreset.Items.Add(new ComboBoxItem { Content = preset.ToString(), Tag = (preset.Id, preset.StyleId) });
+
+                cbAivisSpeechPreset.SelectedIndex = 0;
+                foreach (ComboBoxItem item in cbAivisSpeechPreset.Items)
+                {
+                    if (item.Tag is ValueTuple<int, int> tuple && tuple.Item1 == settings.AivisSpeechPresetId)
+                    {
+                        cbAivisSpeechPreset.SelectedItem = item;
+                        break;
+                    }
+                }
+
+                tbVoiceStatus.Text = $"{presets.Count}件のプリセットを取得しました";
+            }
+            catch (Exception ex)
+            {
+                tbVoiceStatus.Text = $"取得失敗: {ex.Message}";
+            }
+            finally
+            {
+                btnFetchAivisSpeechPresets.IsEnabled = true;
+            }
+        }
+
         private void btnTestVoice_Click(object sender, RoutedEventArgs e)
         {
             tbVoiceStatus.Text = "再生中...";
@@ -390,9 +516,17 @@ namespace VPet.Mod.LLMChat
             {
                 testVoicePlayer.SpeakForTestAiVoice("こんにちは、よろしくね！", tbAiVoiceInstallDir.Text, SelectedAiVoicePresetName, OnSuccess, OnError);
             }
+            else if (SelectedTtsProvider == TtsProviderKind.AivisSpeech)
+            {
+                var preset = SelectedAivisSpeechPreset;
+                if (preset.PresetId is int presetId)
+                    testVoicePlayer.SpeakForTestAivisSpeechPreset("こんにちは、よろしくね！", tbAivisSpeechEndpoint.Text, presetId, preset.StyleId, OnSuccess, OnError);
+                else
+                    testVoicePlayer.SpeakForTestAivisSpeech("こんにちは、よろしくね！", tbAivisSpeechEndpoint.Text, SelectedAivisSpeechSpeakerId, ReadVoiceAdjustmentsFromUi(), OnSuccess, OnError);
+            }
             else
             {
-                testVoicePlayer.SpeakForTestVoicevox("こんにちは、よろしくね！", tbVoiceEndpoint.Text, SelectedVoiceSpeakerId, OnSuccess, OnError);
+                testVoicePlayer.SpeakForTestVoicevox("こんにちは、よろしくね！", tbVoiceEndpoint.Text, SelectedVoiceSpeakerId, ReadVoiceAdjustmentsFromUi(), OnSuccess, OnError);
             }
         }
 
@@ -406,5 +540,28 @@ namespace VPet.Mod.LLMChat
                 return max;
             return value;
         }
+
+        private static double ParseDoubleOrDefault(string text, double min, double max, double fallback)
+        {
+            if (!double.TryParse(text, out var value))
+                return fallback;
+            if (value < min)
+                return min;
+            if (value > max)
+                return max;
+            return value;
+        }
+
+        /// <summary>設定画面上の詳細設定欄(未保存の入力値含む)からVOICEVOX/AivisSpeech用の調整値を組み立てる(試し読み用)</summary>
+        private VoicevoxSynthesisAdjustments ReadVoiceAdjustmentsFromUi() => new VoicevoxSynthesisAdjustments
+        {
+            SpeedScale = ParseDoubleOrDefault(tbVoiceSpeedScale.Text, 0.5, 2.0, settings.VoiceSpeedScale),
+            PitchScale = ParseDoubleOrDefault(tbVoicePitchScale.Text, -0.15, 0.15, settings.VoicePitchScale),
+            IntonationScale = ParseDoubleOrDefault(tbVoiceIntonationScale.Text, 0.0, 2.0, settings.VoiceIntonationScale),
+            TempoDynamicsScale = ParseDoubleOrDefault(tbVoiceTempoDynamicsScale.Text, 0.0, 2.0, settings.VoiceTempoDynamicsScale),
+            VolumeScale = ParseDoubleOrDefault(tbVoiceVolumeScale.Text, 0.0, 2.0, settings.VoiceVolumeScale),
+            PrePhonemeLength = ParseDoubleOrDefault(tbVoicePrePhonemeLength.Text, 0.0, 1.5, settings.VoicePrePhonemeLength),
+            PostPhonemeLength = ParseDoubleOrDefault(tbVoicePostPhonemeLength.Text, 0.0, 1.5, settings.VoicePostPhonemeLength),
+        };
     }
 }

@@ -311,6 +311,7 @@
                             <TextBlock Grid.Column="0" Text="読み上げ方式" VerticalAlignment="Center"/>
                             <ComboBox Grid.Column="1" Name="cbTtsProvider" Margin="6,0,0,0" SelectionChanged="cbTtsProvider_SelectionChanged">
                                 <ComboBoxItem Content="VOICEVOX (ローカル)" Tag="Voicevox"/>
+                                <ComboBoxItem Content="AivisSpeech (ローカル)" Tag="AivisSpeech"/>
                                 <ComboBoxItem Content="OpenAI TTS (クラウドAPI)" Tag="OpenAi"/>
                                 <ComboBoxItem Content="A.I.VOICE (ローカル)" Tag="AiVoice"/>
                             </ComboBox>
@@ -348,6 +349,96 @@
                                 <Button Grid.Column="2" Name="btnFetchSpeakers" Content="一覧取得" Click="btnFetchSpeakers_Click"/>
                             </Grid>
                             <TextBlock Style="{StaticResource HelperText}" Text="※事前にVOICEVOXアプリ/ENGINEを起動しておく必要があります"/>
+                        </StackPanel>
+
+                        <StackPanel Name="spAivisSpeechSettings" Margin="28,10,0,0" Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="エンドポイント" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Name="tbAivisSpeechEndpoint" Margin="6,0,0,0"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="話者" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" Name="cbAivisSpeechSpeaker" Margin="6,0,6,0"/>
+                                <Button Grid.Column="2" Name="btnFetchAivisSpeechSpeakers" Content="一覧取得" Click="btnFetchAivisSpeechSpeakers_Click"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="プリセット" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" Name="cbAivisSpeechPreset" Margin="6,0,6,0"/>
+                                <Button Grid.Column="2" Name="btnFetchAivisSpeechPresets" Content="一覧取得" Click="btnFetchAivisSpeechPresets_Click"/>
+                            </Grid>
+                            <TextBlock Style="{StaticResource HelperText}"
+                                    Text="※プリセットを選ぶと、AivisSpeech Engine側で設定した話速・音高・抑揚等も含めて反映されます(「使用しない」の場合は上の話者のみ使用)"/>
+                            <TextBlock Style="{StaticResource HelperText}" Text="※事前にAivisSpeech Engineを起動しておく必要があります(既定ポート: 10101)"/>
+                        </StackPanel>
+
+                        <StackPanel Name="spVoiceAdjustments" Margin="28,14,0,0">
+                            <TextBlock Text="詳細設定(VOICEVOX/AivisSpeech共通)" Style="{StaticResource FieldLabel}"/>
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="76"/>
+                                    <ColumnDefinition Width="20"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="64"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="話速" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Name="tbVoiceSpeedScale" Margin="6,0,0,0" Padding="6,6"/>
+                                <TextBlock Grid.Column="3" Text="音高" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="4" Name="tbVoicePitchScale" Margin="6,0,0,0" Padding="6,6"/>
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="76"/>
+                                    <ColumnDefinition Width="20"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="64"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="抑揚" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Name="tbVoiceIntonationScale" Margin="6,0,0,0" Padding="6,6"/>
+                                <TextBlock Grid.Column="3" Text="テンポの緩急" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="4" Name="tbVoiceTempoDynamicsScale" Margin="6,0,0,0" Padding="6,6"/>
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="76"/>
+                                    <ColumnDefinition Width="20"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="64"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="音量倍率" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Name="tbVoiceVolumeScale" Margin="6,0,0,0" Padding="6,6"/>
+                                <TextBlock Grid.Column="3" Text="開始無音(秒)" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="4" Name="tbVoicePrePhonemeLength" Margin="6,0,0,0" Padding="6,6"/>
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="76"/>
+                                    <ColumnDefinition Width="20"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="64"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="終了無音(秒)" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Name="tbVoicePostPhonemeLength" Margin="6,0,0,0" Padding="6,6"/>
+                            </Grid>
+                            <TextBlock Style="{StaticResource HelperText}"
+                                    Text="※AivisSpeechでプリセットを選択している場合、この詳細設定は無視されプリセット側の値が使われます。「テンポの緩急」はAivisSpeech固有でVOICEVOXでは無視されます"/>
                         </StackPanel>
 
                         <StackPanel Name="spAiVoiceSettings" Margin="28,10,0,0" Visibility="Collapsed">
