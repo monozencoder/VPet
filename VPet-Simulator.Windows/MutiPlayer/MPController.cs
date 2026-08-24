@@ -124,6 +124,7 @@ namespace VPet_Simulator.Windows
 
                 try
                 {
+                    if (mw.Set.GameScreenIndex < 0) return true;
                     var screen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(mp).Handle);
                     var screens = System.Windows.Forms.Screen.AllScreens;
                     for (int i = 0; i < screens.Length; i++)

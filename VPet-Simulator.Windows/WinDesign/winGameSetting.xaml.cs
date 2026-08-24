@@ -34,6 +34,7 @@ namespace VPet_Simulator.Windows
     {
         MainWindow mw;
         private bool AllowChange = false;
+        private int _screenCount = 0;
 
         public winGameSetting(MainWindow mw)
         {
@@ -284,6 +285,8 @@ namespace VPet_Simulator.Windows
 
             foreach (var v in ListMenuItems)
                 ListMenu.Items.Add(v);
+
+            PopulateScreenSelector();
 
             AllowChange = true;
 
@@ -781,15 +784,77 @@ namespace VPet_Simulator.Windows
             if (mwCtrl.IsPrimaryScreen && !mwCtrl.AutoChangeWindow)
             {
                 textMoveArea.Text = "主屏幕".Translate();
-                return;
             }
             else if (mwCtrl.AutoChangeWindow)
             {
                 textMoveArea.Text = "自动选择窗口".Translate();
-                return;
             }
-            var rect = mwCtrl.ScreenBorder;
-            textMoveArea.Text = $"X:{rect.X};Y:{rect.Y};W:{rect.Width};H:{rect.Height}";
+            else
+            {
+                var rect = mwCtrl.ScreenBorder;
+                textMoveArea.Text = $"X:{rect.X};Y:{rect.Y};W:{rect.Width};H:{rect.Height}";
+            }
+
+            int idx = mw.Set.GameScreenIndex;
+            int targetSelectIndex = idx < 0 ? _screenCount : idx;
+            if (targetSelectIndex >= 0 && targetSelectIndex < ComboSelectScreen.Items.Count && ComboSelectScreen.SelectedIndex != targetSelectIndex)
+            {
+                bool prevAllow = AllowChange;
+                AllowChange = false;
+                ComboSelectScreen.SelectedIndex = targetSelectIndex;
+                AllowChange = prevAllow;
+            }
+        }
+
+        private void PopulateScreenSelector()
+        {
+            ComboSelectScreen.Items.Clear();
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            _screenCount = screens.Length;
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var s = screens[i];
+                string mark = s.Primary ? " ★" : "";
+                ComboSelectScreen.Items.Add(new ComboBoxItem { Content = $"{i + 1}: {s.Bounds.Width}x{s.Bounds.Height}{mark}" });
+            }
+            if (screens.Length > 1)
+            {
+                ComboSelectScreen.Items.Add(new ComboBoxItem { Content = "全てのモニターを結合".Translate() });
+            }
+
+            int gameScreenIndex = mw.Set.GameScreenIndex;
+            int selectIndex;
+            if (gameScreenIndex < 0 && screens.Length > 1)
+                selectIndex = screens.Length;
+            else if (gameScreenIndex >= 0 && gameScreenIndex < screens.Length)
+                selectIndex = gameScreenIndex;
+            else
+                selectIndex = 0;
+            ComboSelectScreen.SelectedIndex = selectIndex;
+        }
+
+        private void ComboSelectScreen_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            int selected = ComboSelectScreen.SelectedIndex;
+            if (selected < 0)
+                return;
+            var mwCtrl = mw.Core.Controller as MWController;
+            if (selected >= _screenCount)
+            {
+                if (mwCtrl.HasScreenGaps() && MessageBoxX.Show(
+                        "当前显示器的分辨率或排列不一致,合并后桌宠可能进入任何屏幕都无法显示的空隙区域\n是否仍要合并所有显示器?".Translate(),
+                        "确认合并显示器".Translate(), MessageBoxButton.YesNo, MessageBoxIcon.Warning) != MessageBoxResult.Yes)
+                {
+                    UpdateMoveAreaText();
+                    return;
+                }
+                mwCtrl.MoveToAllScreens();
+            }
+            else
+                mwCtrl.MoveToScreen(selected);
+            UpdateMoveAreaText();
         }
 
         private void BtnSetMoveArea_Default_Click(object sender, RoutedEventArgs e)

@@ -24,6 +24,9 @@ namespace VPet.Mod.LLMChat
         private AudioRecorder recorder;
         private bool isRecording;
         private CancellationTokenSource activeRequestCts;
+        private bool proactiveNotifiedForCurrentFailureStreak;
+        private string lastProactiveError;
+        private DateTime? lastProactiveErrorTime;
         private const int MaxHistoryMessages = 40;
 
         /// <summary>直近の会話履歴が上限を超えて捨てられた分を要約して積み立てる長期記憶</summary>
@@ -127,7 +130,10 @@ namespace VPet.Mod.LLMChat
 
         /// <summary>
         /// ユーザーの発言なしに、キャラクターから自発的に一言話しかける。
-        /// APIキー未設定時や通信エラー時は静かに何もしない(ユーザー操作起点ではないため)。
+        /// APIキー未設定時は静かに何もしない(ユーザー操作起点ではないため)。
+        /// 通信/APIエラーはキャラクターには喋らせず(口調を崩さないため)、代わりにWindowsの通知と
+        /// 設定画面のステータス表示で知らせる。通知は連続失敗中に何度も出てうるさくならないよう
+        /// 最初の1回だけ行う(残高不足など、気づかないと長時間発話が止まったままになる問題を防ぐため)。
         /// </summary>
         public async void TriggerProactiveMessage()
         {
@@ -147,16 +153,30 @@ namespace VPet.Mod.LLMChat
             {
                 var provider = BuildProvider();
                 // 自発的な話しかけはユーザーが待っているわけではないため、ストリーミング表示はせず
-                // 従来通り全文確定後にまとめて表示する(失敗時も静かに何もしない挙動を維持)
+                // 従来通り全文確定後にまとめて表示する
                 var reply = await provider.ChatStreamAsync(BuildSystemPromptWithMemory(), history, _ => { }, cts.Token).ConfigureAwait(true);
                 history.Add(new ChatMessage("assistant", reply));
                 PersistMemory();
                 voicePlayer.Speak(reply);
                 DisplayThinkToSayRnd(reply);
+                lastProactiveError = null;
+                lastProactiveErrorTime = null;
+                proactiveNotifiedForCurrentFailureStreak = false;
             }
-            catch
+            catch (Exception ex)
             {
                 history.Remove(userMessage);
+                lastProactiveError = ex.Message;
+                lastProactiveErrorTime = DateTime.Now;
+                if (!proactiveNotifiedForCurrentFailureStreak)
+                {
+                    proactiveNotifiedForCurrentFailureStreak = true;
+                    // NotifyIconはメッセージポンプが動くUIスレッドで生成・操作する必要があるため
+                    Dispatcher.Invoke(() => TrayNotifier.ShowWarning(
+                        "LLMChat: 自発的な話しかけに失敗しています",
+                        ex.Message,
+                        onClick: Setting));
+                }
             }
             finally
             {
@@ -168,7 +188,7 @@ namespace VPet.Mod.LLMChat
 
         public override void Setting()
         {
-            var window = new SettingWindow(plugin.Settings, PetName);
+            var window = new SettingWindow(plugin.Settings, PetName, lastProactiveError, lastProactiveErrorTime);
             if (window.ShowDialog() == true)
             {
                 plugin.Settings.Save();
@@ -240,13 +260,15 @@ namespace VPet.Mod.LLMChat
                     return;
 
                 var apiKey = CredentialStore.Load(LLMChatSettings.VoiceInputCredentialKey) ?? string.Empty;
-                if (string.IsNullOrEmpty(apiKey))
+                // ローカルサーバーの多くはAPIキー不要のため、必須チェックはOpenAI利用時のみ行う
+                if (plugin.Settings.SttProvider == SttProviderKind.OpenAi && string.IsNullOrEmpty(apiKey))
                 {
                     DisplayThinkToSayRnd("音声入力用のOpenAI APIキーが設定されていません(設定画面から登録してください)");
                     return;
                 }
 
-                var transcriber = new WhisperTranscriber(apiKey, plugin.Settings.VoiceInputModel);
+                var endpoint = plugin.Settings.SttProvider == SttProviderKind.LocalServer ? plugin.Settings.VoiceInputEndpoint : null;
+                var transcriber = new WhisperTranscriber(apiKey, plugin.Settings.VoiceInputModel, endpoint);
                 var text = await transcriber.TranscribeAsync(wav, CancellationToken.None).ConfigureAwait(true);
                 if (!string.IsNullOrWhiteSpace(text))
                 {

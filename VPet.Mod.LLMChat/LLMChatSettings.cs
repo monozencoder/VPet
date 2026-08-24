@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using VPet_Simulator.Windows.Interface;
 
@@ -16,6 +17,17 @@ namespace VPet.Mod.LLMChat
         Custom,
         //既存の設定ファイルはenumを数値のまま保存しているため、Provider列挙値は必ず末尾に追加すること
         Kimi,
+    }
+
+    /// <summary>
+    /// 対応する音声入力(STT/Whisper)プロバイダーの種類
+    /// </summary>
+    public enum SttProviderKind
+    {
+        /// <summary>OpenAIのクラウドWhisper API</summary>
+        OpenAi,
+        /// <summary>ローカルで起動する、OpenAI互換のTranscription APIを持つサーバー(faster-whisper-server等)</summary>
+        LocalServer,
     }
 
     /// <summary>
@@ -103,8 +115,12 @@ namespace VPet.Mod.LLMChat
         /// <summary>読み上げに使うA.I.VOICEのボイスプリセット名(空欄ならA.I.VOICE Editor側で選択中のものを使用)</summary>
         public string AiVoicePresetName { get; set; } = "";
 
-        /// <summary>マイクボタンで音声入力(OpenAI Whisper)を使うか</summary>
+        /// <summary>マイクボタンで音声入力(Whisper)を使うか</summary>
         public bool VoiceInputEnabled { get; set; } = false;
+        /// <summary>音声入力に使うプロバイダー</summary>
+        public SttProviderKind SttProvider { get; set; } = SttProviderKind.OpenAi;
+        /// <summary>SttProvider == LocalServerのときに使う、OpenAI互換のTranscription APIエンドポイント</summary>
+        public string VoiceInputEndpoint { get; set; } = "http://127.0.0.1:8000/v1/audio/transcriptions";
         /// <summary>音声入力に使うWhisperのモデル名</summary>
         public string VoiceInputModel { get; set; } = "whisper-1";
         /// <summary>音声認識結果を確認なしで自動的に送信するか</summary>
@@ -124,6 +140,9 @@ namespace VPet.Mod.LLMChat
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
+            // 既定のEncoderはシステムプロンプト等の日本語を\uXXXXにエスケープしてしまい、テキストエディタで
+            // 直接確認・編集しづらいため、UTF-8のまま出力する
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
 
         private static string SettingsFilePath => Path.Combine(ExtensionValue.GetMODStorage("LLMChat"), FileName);

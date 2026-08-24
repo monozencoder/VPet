@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -15,17 +17,38 @@ namespace VPet.Mod.LLMChat
         private readonly LLMChatSettings settings;
         private readonly string petName;
         private readonly SpeechPlayer testVoicePlayer = new SpeechPlayer(null);
+        // InitializeComponent()内のBAML読み込み中、Sliderの既定値(Minimum=0)と異なるMinimum/Maximumを
+        // 設定すると値の自動補正でValueChangedが即座に発火することがあり、その時点ではまだ他のx:Name
+        // フィールドが未初期化のためNullReferenceExceptionになる。InitializeComponent完了までは無視する
+        private bool isInitializing = true;
 
         /// <summary>「記憶を消去」ボタンでディスク上の記憶を消去したか(呼び出し元で実行中の会話履歴もクリアする必要がある)</summary>
         public bool MemoryCleared { get; private set; }
 
-        public SettingWindow(LLMChatSettings settings, string petName)
+        public SettingWindow(LLMChatSettings settings, string petName, string lastProactiveError = null, DateTime? lastProactiveErrorTime = null)
         {
             InitializeComponent();
+            isInitializing = false;
             this.settings = settings;
             this.petName = petName;
             LoadFromSettings();
+            UpdateProactiveStatus(lastProactiveError, lastProactiveErrorTime);
             Closed += (_, _) => testVoicePlayer.Stop();
+        }
+
+        private void UpdateProactiveStatus(string lastError, DateTime? lastErrorTime)
+        {
+            if (string.IsNullOrEmpty(lastError))
+            {
+                tbProactiveStatus.Text = "✓ 直近の自発的な話しかけは正常に動作しています";
+                tbProactiveStatus.Foreground = Brushes.Gray;
+            }
+            else
+            {
+                var when = lastErrorTime.HasValue ? lastErrorTime.Value.ToString("HH:mm:ss") : "不明な時刻";
+                tbProactiveStatus.Text = $"⚠ 自発的な話しかけがエラーで失敗しています(最終発生: {when})\n{lastError}";
+                tbProactiveStatus.Foreground = Brushes.OrangeRed;
+            }
         }
 
         private void LoadFromSettings()
@@ -91,13 +114,14 @@ namespace VPet.Mod.LLMChat
                 cbAivisSpeechPreset.SelectedIndex = 0;
             }
 
-            tbVoiceSpeedScale.Text = settings.VoiceSpeedScale.ToString("0.00");
-            tbVoicePitchScale.Text = settings.VoicePitchScale.ToString("0.00");
-            tbVoiceIntonationScale.Text = settings.VoiceIntonationScale.ToString("0.00");
-            tbVoiceTempoDynamicsScale.Text = settings.VoiceTempoDynamicsScale.ToString("0.00");
-            tbVoiceVolumeScale.Text = settings.VoiceVolumeScale.ToString("0.00");
-            tbVoicePrePhonemeLength.Text = settings.VoicePrePhonemeLength.ToString("0.00");
-            tbVoicePostPhonemeLength.Text = settings.VoicePostPhonemeLength.ToString("0.00");
+            sliderVoiceSpeedScale.Value = settings.VoiceSpeedScale;
+            sliderVoicePitchScale.Value = settings.VoicePitchScale;
+            sliderVoiceIntonationScale.Value = settings.VoiceIntonationScale;
+            sliderVoiceTempoDynamicsScale.Value = settings.VoiceTempoDynamicsScale;
+            sliderVoiceVolumeScale.Value = settings.VoiceVolumeScale;
+            sliderVoicePrePhonemeLength.Value = settings.VoicePrePhonemeLength;
+            sliderVoicePostPhonemeLength.Value = settings.VoicePostPhonemeLength;
+            UpdateVoiceAdjustmentLabels();
 
             tbTtsOpenAiModel.Text = settings.OpenAiTtsModel;
             tbTtsOpenAiVoice.Text = settings.OpenAiTtsVoice;
@@ -113,10 +137,23 @@ namespace VPet.Mod.LLMChat
             UpdateTtsProviderVisibility();
 
             cbMemoryEnabled.IsChecked = settings.MemoryPersistenceEnabled;
+            tbMemoryPath.Text = ChatMemoryStore.GetFilePath(petName);
 
             cbVoiceInputEnabled.IsChecked = settings.VoiceInputEnabled;
             cbVoiceInputAutoSend.IsChecked = settings.VoiceInputAutoSend;
             cbMicSoundEnabled.IsChecked = settings.MicSoundEnabled;
+            foreach (ComboBoxItem item in cbSttProvider.Items)
+            {
+                if ((string)item.Tag == settings.SttProvider.ToString())
+                {
+                    cbSttProvider.SelectedItem = item;
+                    break;
+                }
+            }
+            if (cbSttProvider.SelectedItem == null)
+                cbSttProvider.SelectedIndex = 0;
+            tbSttEndpoint.Text = settings.VoiceInputEndpoint;
+            UpdateSttProviderVisibility();
             tbVoiceInputModel.Text = settings.VoiceInputModel;
             SetKeyStatus(tbVoiceInputKeyStatus, CredentialStore.Exists(LLMChatSettings.VoiceInputCredentialKey));
 
@@ -129,6 +166,22 @@ namespace VPet.Mod.LLMChat
 
         private TtsProviderKind SelectedTtsProvider =>
             (TtsProviderKind)System.Enum.Parse(typeof(TtsProviderKind), (string)((ComboBoxItem)cbTtsProvider.SelectedItem).Tag);
+
+        private SttProviderKind SelectedSttProvider =>
+            (SttProviderKind)System.Enum.Parse(typeof(SttProviderKind), (string)((ComboBoxItem)cbSttProvider.SelectedItem).Tag);
+
+        private void UpdateSttProviderVisibility()
+        {
+            if (cbSttProvider.SelectedItem == null)
+                return;
+            spSttEndpoint.Visibility = SelectedSttProvider == SttProviderKind.LocalServer ? Visibility.Visible : Visibility.Collapsed;
+            spVoiceInputApiKey.Visibility = SelectedSttProvider == SttProviderKind.OpenAi ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void cbSttProvider_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateSttProviderVisibility();
+        }
 
         private void UpdateTtsOpenAiKeyLabel()
         {
@@ -166,8 +219,28 @@ namespace VPet.Mod.LLMChat
 
         private void sliderVoiceVolume_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (isInitializing)
+                return;
             UpdateVoiceVolumeLabel();
             testVoicePlayer.Volume = (float)(sliderVoiceVolume.Value / 100.0);
+        }
+
+        private void UpdateVoiceAdjustmentLabels()
+        {
+            tbVoiceSpeedScaleValue.Text = sliderVoiceSpeedScale.Value.ToString("0.00");
+            tbVoicePitchScaleValue.Text = sliderVoicePitchScale.Value.ToString("0.00");
+            tbVoiceIntonationScaleValue.Text = sliderVoiceIntonationScale.Value.ToString("0.00");
+            tbVoiceTempoDynamicsScaleValue.Text = sliderVoiceTempoDynamicsScale.Value.ToString("0.00");
+            tbVoiceVolumeScaleValue.Text = sliderVoiceVolumeScale.Value.ToString("0.00");
+            tbVoicePrePhonemeLengthValue.Text = sliderVoicePrePhonemeLength.Value.ToString("0.00");
+            tbVoicePostPhonemeLengthValue.Text = sliderVoicePostPhonemeLength.Value.ToString("0.00");
+        }
+
+        private void sliderVoiceAdjustment_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (isInitializing)
+                return;
+            UpdateVoiceAdjustmentLabels();
         }
 
         private void UpdateApiKeyLabel()
@@ -277,13 +350,13 @@ namespace VPet.Mod.LLMChat
             var selectedAivisPreset = SelectedAivisSpeechPreset;
             settings.AivisSpeechPresetId = selectedAivisPreset.PresetId;
             settings.AivisSpeechPresetStyleId = selectedAivisPreset.StyleId;
-            settings.VoiceSpeedScale = ParseDoubleOrDefault(tbVoiceSpeedScale.Text, 0.5, 2.0, settings.VoiceSpeedScale);
-            settings.VoicePitchScale = ParseDoubleOrDefault(tbVoicePitchScale.Text, -0.15, 0.15, settings.VoicePitchScale);
-            settings.VoiceIntonationScale = ParseDoubleOrDefault(tbVoiceIntonationScale.Text, 0.0, 2.0, settings.VoiceIntonationScale);
-            settings.VoiceTempoDynamicsScale = ParseDoubleOrDefault(tbVoiceTempoDynamicsScale.Text, 0.0, 2.0, settings.VoiceTempoDynamicsScale);
-            settings.VoiceVolumeScale = ParseDoubleOrDefault(tbVoiceVolumeScale.Text, 0.0, 2.0, settings.VoiceVolumeScale);
-            settings.VoicePrePhonemeLength = ParseDoubleOrDefault(tbVoicePrePhonemeLength.Text, 0.0, 1.5, settings.VoicePrePhonemeLength);
-            settings.VoicePostPhonemeLength = ParseDoubleOrDefault(tbVoicePostPhonemeLength.Text, 0.0, 1.5, settings.VoicePostPhonemeLength);
+            settings.VoiceSpeedScale = sliderVoiceSpeedScale.Value;
+            settings.VoicePitchScale = sliderVoicePitchScale.Value;
+            settings.VoiceIntonationScale = sliderVoiceIntonationScale.Value;
+            settings.VoiceTempoDynamicsScale = sliderVoiceTempoDynamicsScale.Value;
+            settings.VoiceVolumeScale = sliderVoiceVolumeScale.Value;
+            settings.VoicePrePhonemeLength = sliderVoicePrePhonemeLength.Value;
+            settings.VoicePostPhonemeLength = sliderVoicePostPhonemeLength.Value;
             if (!string.IsNullOrWhiteSpace(tbTtsOpenAiModel.Text))
                 settings.OpenAiTtsModel = tbTtsOpenAiModel.Text.Trim();
             if (!string.IsNullOrWhiteSpace(tbTtsOpenAiVoice.Text))
@@ -296,6 +369,9 @@ namespace VPet.Mod.LLMChat
             settings.VoiceInputEnabled = cbVoiceInputEnabled.IsChecked == true;
             settings.VoiceInputAutoSend = cbVoiceInputAutoSend.IsChecked == true;
             settings.MicSoundEnabled = cbMicSoundEnabled.IsChecked == true;
+            settings.SttProvider = SelectedSttProvider;
+            if (!string.IsNullOrWhiteSpace(tbSttEndpoint.Text))
+                settings.VoiceInputEndpoint = tbSttEndpoint.Text.Trim();
             if (!string.IsNullOrWhiteSpace(tbVoiceInputModel.Text))
                 settings.VoiceInputModel = tbVoiceInputModel.Text.Trim();
 
@@ -332,6 +408,24 @@ namespace VPet.Mod.LLMChat
             MemoryCleared = true;
             tbMemoryStatus.Text = "記憶を消去しました";
             tbMemoryStatus.Foreground = Brushes.Green;
+        }
+
+        /// <summary>記憶ファイルを含むフォルダをエクスプローラーで開き、ファイルが存在すれば選択状態にする</summary>
+        private void btnOpenMemoryFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var path = tbMemoryPath.Text;
+                if (File.Exists(path))
+                    Process.Start("explorer.exe", $"/select,\"{path}\"");
+                else
+                    Process.Start("explorer.exe", $"\"{Path.GetDirectoryName(path)}\"");
+            }
+            catch (Exception ex)
+            {
+                tbMemoryStatus.Text = $"フォルダを開けませんでした: {ex.Message}";
+                tbMemoryStatus.Foreground = Brushes.Red;
+            }
         }
 
         private int SelectedVoiceSpeakerId =>
@@ -541,27 +635,16 @@ namespace VPet.Mod.LLMChat
             return value;
         }
 
-        private static double ParseDoubleOrDefault(string text, double min, double max, double fallback)
-        {
-            if (!double.TryParse(text, out var value))
-                return fallback;
-            if (value < min)
-                return min;
-            if (value > max)
-                return max;
-            return value;
-        }
-
         /// <summary>設定画面上の詳細設定欄(未保存の入力値含む)からVOICEVOX/AivisSpeech用の調整値を組み立てる(試し読み用)</summary>
         private VoicevoxSynthesisAdjustments ReadVoiceAdjustmentsFromUi() => new VoicevoxSynthesisAdjustments
         {
-            SpeedScale = ParseDoubleOrDefault(tbVoiceSpeedScale.Text, 0.5, 2.0, settings.VoiceSpeedScale),
-            PitchScale = ParseDoubleOrDefault(tbVoicePitchScale.Text, -0.15, 0.15, settings.VoicePitchScale),
-            IntonationScale = ParseDoubleOrDefault(tbVoiceIntonationScale.Text, 0.0, 2.0, settings.VoiceIntonationScale),
-            TempoDynamicsScale = ParseDoubleOrDefault(tbVoiceTempoDynamicsScale.Text, 0.0, 2.0, settings.VoiceTempoDynamicsScale),
-            VolumeScale = ParseDoubleOrDefault(tbVoiceVolumeScale.Text, 0.0, 2.0, settings.VoiceVolumeScale),
-            PrePhonemeLength = ParseDoubleOrDefault(tbVoicePrePhonemeLength.Text, 0.0, 1.5, settings.VoicePrePhonemeLength),
-            PostPhonemeLength = ParseDoubleOrDefault(tbVoicePostPhonemeLength.Text, 0.0, 1.5, settings.VoicePostPhonemeLength),
+            SpeedScale = sliderVoiceSpeedScale.Value,
+            PitchScale = sliderVoicePitchScale.Value,
+            IntonationScale = sliderVoiceIntonationScale.Value,
+            TempoDynamicsScale = sliderVoiceTempoDynamicsScale.Value,
+            VolumeScale = sliderVoiceVolumeScale.Value,
+            PrePhonemeLength = sliderVoicePrePhonemeLength.Value,
+            PostPhonemeLength = sliderVoicePostPhonemeLength.Value,
         };
     }
 }

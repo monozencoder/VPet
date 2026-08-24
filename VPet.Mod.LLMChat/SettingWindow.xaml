@@ -282,6 +282,7 @@
                             <TextBlock Grid.Column="3" Text="確率(%)" VerticalAlignment="Center"/>
                             <TextBox Grid.Column="4" Name="tbProactiveChance" Margin="6,0,0,0" Padding="6,6"/>
                         </Grid>
+                        <TextBlock Name="tbProactiveStatus" Margin="28,8,0,0" FontSize="11" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
@@ -291,6 +292,17 @@
                         <CheckBox Name="cbMemoryEnabled" Content="会話を記憶する(アプリ再起動後も記憶を維持)" FontWeight="SemiBold"/>
                         <TextBlock Style="{StaticResource HelperText}" Margin="28,4,0,0"
                                 Text="※古くなった会話はAIが自動で要約して覚えておきます。会話内容はこのPC上にファイルとして保存されます"/>
+
+                        <TextBlock Text="保存先" Style="{StaticResource FieldLabel}" Margin="28,10,0,4"/>
+                        <Grid Margin="28,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Name="tbMemoryPath" IsReadOnly="True" Margin="0,0,8,0"/>
+                            <Button Grid.Column="1" Name="btnOpenMemoryFolder" Content="フォルダを開く" Click="btnOpenMemoryFolder_Click"/>
+                        </Grid>
+
                         <StackPanel Orientation="Horizontal" Margin="28,10,0,0">
                             <Button Name="btnClearMemory" Content="記憶を消去" Width="100" Click="btnClearMemory_Click"/>
                             <TextBlock Name="tbMemoryStatus" VerticalAlignment="Center" Margin="10,0,0,0" Style="{StaticResource HelperText}"/>
@@ -387,56 +399,85 @@
 
                         <StackPanel Name="spVoiceAdjustments" Margin="28,14,0,0">
                             <TextBlock Text="詳細設定(VOICEVOX/AivisSpeech共通)" Style="{StaticResource FieldLabel}"/>
+
                             <Grid Margin="0,4,0,0">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="76"/>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="64"/>
+                                    <ColumnDefinition Width="96"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="44"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="話速" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Name="tbVoiceSpeedScale" Margin="6,0,0,0" Padding="6,6"/>
-                                <TextBlock Grid.Column="3" Text="音高" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="4" Name="tbVoicePitchScale" Margin="6,0,0,0" Padding="6,6"/>
+                                <Slider Grid.Column="1" Name="sliderVoiceSpeedScale" Margin="8,0,8,0" Minimum="0.5" Maximum="2.0"
+                                        VerticalAlignment="Center" ValueChanged="sliderVoiceAdjustment_ValueChanged"/>
+                                <TextBlock Grid.Column="2" Name="tbVoiceSpeedScaleValue" VerticalAlignment="Center"/>
                             </Grid>
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="76"/>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="64"/>
+                                    <ColumnDefinition Width="96"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="44"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="音高" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Name="sliderVoicePitchScale" Margin="8,0,8,0" Minimum="-0.15" Maximum="0.15"
+                                        VerticalAlignment="Center" ValueChanged="sliderVoiceAdjustment_ValueChanged"/>
+                                <TextBlock Grid.Column="2" Name="tbVoicePitchScaleValue" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="96"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="44"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="抑揚" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Name="tbVoiceIntonationScale" Margin="6,0,0,0" Padding="6,6"/>
-                                <TextBlock Grid.Column="3" Text="テンポの緩急" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="4" Name="tbVoiceTempoDynamicsScale" Margin="6,0,0,0" Padding="6,6"/>
+                                <Slider Grid.Column="1" Name="sliderVoiceIntonationScale" Margin="8,0,8,0" Minimum="0.0" Maximum="2.0"
+                                        VerticalAlignment="Center" ValueChanged="sliderVoiceAdjustment_ValueChanged"/>
+                                <TextBlock Grid.Column="2" Name="tbVoiceIntonationScaleValue" VerticalAlignment="Center"/>
                             </Grid>
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="76"/>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="64"/>
+                                    <ColumnDefinition Width="96"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="44"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="テンポの緩急" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Name="sliderVoiceTempoDynamicsScale" Margin="8,0,8,0" Minimum="0.0" Maximum="2.0"
+                                        VerticalAlignment="Center" ValueChanged="sliderVoiceAdjustment_ValueChanged"/>
+                                <TextBlock Grid.Column="2" Name="tbVoiceTempoDynamicsScaleValue" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="96"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="44"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="音量倍率" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Name="tbVoiceVolumeScale" Margin="6,0,0,0" Padding="6,6"/>
-                                <TextBlock Grid.Column="3" Text="開始無音(秒)" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="4" Name="tbVoicePrePhonemeLength" Margin="6,0,0,0" Padding="6,6"/>
+                                <Slider Grid.Column="1" Name="sliderVoiceVolumeScale" Margin="8,0,8,0" Minimum="0.0" Maximum="2.0"
+                                        VerticalAlignment="Center" ValueChanged="sliderVoiceAdjustment_ValueChanged"/>
+                                <TextBlock Grid.Column="2" Name="tbVoiceVolumeScaleValue" VerticalAlignment="Center"/>
                             </Grid>
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="76"/>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="64"/>
+                                    <ColumnDefinition Width="96"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="44"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="開始無音(秒)" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Name="sliderVoicePrePhonemeLength" Margin="8,0,8,0" Minimum="0.0" Maximum="1.5"
+                                        VerticalAlignment="Center" ValueChanged="sliderVoiceAdjustment_ValueChanged"/>
+                                <TextBlock Grid.Column="2" Name="tbVoicePrePhonemeLengthValue" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="96"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="44"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="終了無音(秒)" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Name="tbVoicePostPhonemeLength" Margin="6,0,0,0" Padding="6,6"/>
+                                <Slider Grid.Column="1" Name="sliderVoicePostPhonemeLength" Margin="8,0,8,0" Minimum="0.0" Maximum="1.5"
+                                        VerticalAlignment="Center" ValueChanged="sliderVoiceAdjustment_ValueChanged"/>
+                                <TextBlock Grid.Column="2" Name="tbVoicePostPhonemeLengthValue" VerticalAlignment="Center"/>
                             </Grid>
+
                             <TextBlock Style="{StaticResource HelperText}"
                                     Text="※AivisSpeechでプリセットを選択している場合、この詳細設定は無視されプリセット側の値が使われます。「テンポの緩急」はAivisSpeech固有でVOICEVOXでは無視されます"/>
                         </StackPanel>
@@ -511,11 +552,30 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="プロバイダー" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="1" Name="cbSttProvider" Margin="6,0,0,0" SelectionChanged="cbSttProvider_SelectionChanged">
+                                <ComboBoxItem Content="OpenAI Whisper (クラウドAPI)" Tag="OpenAi"/>
+                                <ComboBoxItem Content="ローカルサーバー (OpenAI互換API)" Tag="LocalServer"/>
+                            </ComboBox>
+                        </Grid>
+
+                        <StackPanel Name="spSttEndpoint" Margin="0,10,0,0" Visibility="Collapsed">
+                            <TextBlock Text="エンドポイント" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Name="tbSttEndpoint"/>
+                            <TextBlock Style="{StaticResource HelperText}"
+                                    Text="※faster-whisper-server(Speaches)等、OpenAI互換のTranscription APIを持つローカルサーバーを事前に起動しておく必要があります"/>
+                        </StackPanel>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="モデル" VerticalAlignment="Center"/>
                             <TextBox Grid.Column="1" Name="tbVoiceInputModel" Margin="6,0,0,0"/>
                         </Grid>
 
-                        <StackPanel Margin="0,10,0,0">
+                        <StackPanel Name="spVoiceInputApiKey" Margin="0,10,0,0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Name="tbVoiceInputKeyLabel" Text="Whisper用 OpenAI APIキー" Style="{StaticResource FieldLabel}" Margin="0"/>
                                 <TextBlock Name="tbVoiceInputKeyStatus" Margin="8,0,0,0" FontSize="11" VerticalAlignment="Center"/>

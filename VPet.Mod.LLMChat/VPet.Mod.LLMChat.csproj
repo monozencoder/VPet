@@ -8,6 +8,7 @@
 		<LangVersion>latest</LangVersion>
 		<Nullable>disable</Nullable>
 		<UseWPF>true</UseWPF>
+		<UseWindowsForms>true</UseWindowsForms>
 		<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 		<!--

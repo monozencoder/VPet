@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using VPet_Simulator.Windows.Interface;
 
@@ -19,6 +20,9 @@ namespace VPet.Mod.LLMChat
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
+            // 既定のEncoderは日本語等の非ASCII文字を\uXXXXにエスケープしてしまい、テキストエディタで
+            // 会話内容を直接確認できず不便なため、UTF-8のまま出力する
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
 
         private static string SanitizeFileName(string name)
@@ -31,6 +35,9 @@ namespace VPet.Mod.LLMChat
 
         private static string FilePathFor(string petName) =>
             Path.Combine(ExtensionValue.GetMODStorage("LLMChat"), $"memory_{SanitizeFileName(petName)}.json");
+
+        /// <summary>指定ペットの会話記憶が保存されているファイルのフルパス(設定画面での参照用)</summary>
+        public static string GetFilePath(string petName) => FilePathFor(petName);
 
         public static ChatMemoryStore Load(string petName)
         {

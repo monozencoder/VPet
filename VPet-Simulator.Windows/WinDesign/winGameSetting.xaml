@@ -670,6 +670,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <pu:Switch x:Name="AutoChangeWindowEvent" Margin="5" Background="Transparent"
                                         BorderBrush="{DynamicResource PrimaryDark}" BoxHeight="18" BoxWidth="35"
@@ -701,6 +702,9 @@
                                         Background="{DynamicResource SecondaryLight}"
                                         Click="BtnSetMoveArea_Window_Click" Content="{ll:Str 自定移动范围}"
                                         ToolTip="{ll:Str '手动设置桌宠可移动范围'}" />
+                                <ComboBox x:Name="ComboSelectScreen" Grid.Row="3" Grid.ColumnSpan="3" Margin="5,5,5,5"
+                                        SelectionChanged="ComboSelectScreen_SelectionChanged"
+                                        ToolTip="{ll:Str '选择要显示桌宠的显示器'}" />
                             </Grid>
                             <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="{ll:Str 数据计算}" />
                             <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="{ll:Str 显示状态}" />

@@ -53,6 +53,115 @@ namespace VPet_Simulator.Windows
         public void ResetScreenBorder()
         {
             IsPrimaryScreen = true;
+            var screens = Screen.AllScreens;
+            for (int i = 0; i < screens.Length; i++)
+            {
+                if (screens[i].Primary)
+                {
+                    mw.Set.GameScreenIndex = i;
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 将桌宠移动到指定编号的显示器,并将该显示器范围设为可移动区域
+        /// </summary>
+        public void MoveToScreen(int index)
+        {
+            if (!mw.IsLoaded) return;
+            mw.Dispatcher.Invoke(() =>
+            {
+                var screens = Screen.AllScreens;
+                if (index < 0 || index >= screens.Length) return;
+                var targetScreen = screens[index];
+                var helper = new WindowInteropHelper(mw);
+                var hwndSource = HwndSource.FromHwnd(helper.Handle);
+
+                Rectangle logicalBounds;
+
+                if (hwndSource?.CompositionTarget != null)
+                {
+                    var dpi = hwndSource.CompositionTarget.TransformToDevice;
+
+                    logicalBounds = new Rectangle(
+                        (int)(targetScreen.Bounds.X / dpi.M11),
+                        (int)(targetScreen.Bounds.Y / dpi.M22),
+                        (int)(targetScreen.Bounds.Width / dpi.M11),
+                        (int)(targetScreen.Bounds.Height / dpi.M22)
+                    );
+                }
+                else
+                {
+                    logicalBounds = new Rectangle(
+                        targetScreen.Bounds.X,
+                        targetScreen.Bounds.Y,
+                        targetScreen.Bounds.Width,
+                        targetScreen.Bounds.Height
+                    );
+                }
+
+                ScreenBorder = logicalBounds;
+                mw.Set.GameScreenIndex = index;
+
+                mw.Left = logicalBounds.X + (logicalBounds.Width - mw.ActualWidth) / 2;
+                mw.Top = logicalBounds.Y + (logicalBounds.Height - mw.ActualHeight) / 2;
+            });
+        }
+
+        /// <summary>
+        /// 判断显示器是否存在无法完全铺满外接矩形的排列(不同分辨率/未对齐等),
+        /// 此时合并显示器后桌宠可能进入任何屏幕都无法显示的空隙区域
+        /// </summary>
+        public bool HasScreenGaps()
+        {
+            var screens = Screen.AllScreens;
+            if (screens.Length <= 1) return false;
+
+            var union = screens[0].Bounds;
+            long totalArea = 0;
+            foreach (var s in screens)
+            {
+                union = Rectangle.Union(union, s.Bounds);
+                totalArea += (long)s.Bounds.Width * s.Bounds.Height;
+            }
+            long unionArea = (long)union.Width * union.Height;
+            return totalArea != unionArea;
+        }
+
+        /// <summary>
+        /// 将可移动区域设置为所有显示器合并后的整体范围,使桌宠可以在多个显示器之间自由移动
+        /// </summary>
+        public void MoveToAllScreens()
+        {
+            if (!mw.IsLoaded) return;
+            mw.Dispatcher.Invoke(() =>
+            {
+                var virtualBounds = SystemInformation.VirtualScreen;
+                var helper = new WindowInteropHelper(mw);
+                var hwndSource = HwndSource.FromHwnd(helper.Handle);
+
+                Rectangle logicalBounds;
+
+                if (hwndSource?.CompositionTarget != null)
+                {
+                    var dpi = hwndSource.CompositionTarget.TransformToDevice;
+
+                    logicalBounds = new Rectangle(
+                        (int)(virtualBounds.X / dpi.M11),
+                        (int)(virtualBounds.Y / dpi.M22),
+                        (int)(virtualBounds.Width / dpi.M11),
+                        (int)(virtualBounds.Height / dpi.M22)
+                    );
+                }
+                else
+                {
+                    logicalBounds = virtualBounds;
+                }
+
+                ScreenBorder = logicalBounds;
+                mw.Set.GameScreenIndex = -1;
+            });
         }
 
         public double GetWindowsDistanceLeft()
@@ -119,6 +228,7 @@ namespace VPet_Simulator.Windows
             {
                 try
                 {
+                    if (mw.Set.GameScreenIndex < 0) return true;
                     var screen = Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(mw).Handle);
                     var screens = Screen.AllScreens;
                     for (int i = 0; i < screens.Length; i++)
