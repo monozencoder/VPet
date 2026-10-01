@@ -546,6 +546,9 @@
                         <CheckBox Name="cbVoiceInputEnabled" Content="マイクボタンで音声入力する" FontWeight="SemiBold"/>
                         <CheckBox Name="cbVoiceInputAutoSend" Content="認識結果を確認せず自動的に送信する" Margin="0,10,0,0"/>
                         <CheckBox Name="cbMicSoundEnabled" Content="マイクの開始/停止で音を鳴らす" Margin="0,10,0,0"/>
+                        <CheckBox Name="cbHandsFreeModeEnabled" Content="ハンズフリー会話モード(マイクを常時オンにして自動で聞き取る)" Margin="0,10,0,0"/>
+                        <TextBlock Style="{StaticResource HelperText}" Margin="0,4,0,0"
+                                Text="※話しかけると自動で認識・送信します。キャラクターが話している間はマイクを一時停止するため、割り込みはできません(順番待ち方式)"/>
 
                         <Grid Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>

@@ -130,6 +130,18 @@ namespace VPet.Mod.LLMChat
         /// <summary>マイクの録音開始/停止時に短い効果音を鳴らすか</summary>
         public bool MicSoundEnabled { get; set; } = true;
 
+        /// <summary>
+        /// ハンズフリー会話モード。有効時はマイクボタンでの手動録音の代わりに、マイクを常時開いたまま
+        /// 発話区間を自動検出して送信する(順番待ち方式: キャラクターが話している間はマイクを一時停止する)
+        /// </summary>
+        public bool HandsFreeModeEnabled { get; set; } = false;
+        /// <summary>発話とみなす音量の閾値(0.0～1.0の正規化振幅)。環境ノイズが大きい場合は上げる</summary>
+        public double HandsFreeVolumeThreshold { get; set; } = 0.02;
+        /// <summary>発話が終わったとみなすまでの無音継続時間(ミリ秒)</summary>
+        public int HandsFreeSilenceMs { get; set; } = 900;
+        /// <summary>誤検知(物音等)を無視するための最小発話時間(ミリ秒)</summary>
+        public int HandsFreeMinSpeechMs { get; set; } = 300;
+
         /// <summary>会話履歴と長期記憶をディスクに保存し、アプリ再起動後も維持するか</summary>
         public bool MemoryPersistenceEnabled { get; set; } = true;
         /// <summary>長期記憶(要約)の最大文字数。超えた場合は古い部分から失われる</summary>

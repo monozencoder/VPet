@@ -359,8 +359,13 @@ namespace VPet_Simulator.Core
                 y = 0;
             Core.Controller.MoveWindows(x, y);
             rasetype = 0;
+            isRaisedDragging = true;
             DisplayRaising();
         }
+        /// <summary>
+        /// 是否正在拖拽中 (拖拽中只允许显示提起动画)
+        /// </summary>
+        volatile bool isRaisedDragging = false;
         int rasetype = int.MinValue;
         /// <summary>
         /// 显示拖拽中
@@ -531,6 +536,10 @@ namespace VPet_Simulator.Core
             else
             {
                 nodisplayLoop = 0;
+            }
+            if (isRaisedDragging && graph.GraphInfo.Type != GraphType.Raised_Dynamic && graph.GraphInfo.Type != GraphType.Raised_Static)
+            {//拖拽中: 忽略其他动画(如点击后残留的摸头/说话动画链), 防止覆盖提起动画
+                return;
             }
 #if DEBUG
             Debug.WriteLine(LPSConvert.SerializeObject(graph.GraphInfo, "DISPLAY" + DateTime.Now.Minute, convertNoneLineAttribute: true).ToString());

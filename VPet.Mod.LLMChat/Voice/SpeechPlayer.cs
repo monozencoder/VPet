@@ -21,6 +21,12 @@ namespace VPet.Mod.LLMChat.Voice
         /// <summary>再生音量(0.0～1.0)。試し読み(設定がnull/未反映のとき)はこの値を直接調整して使う</summary>
         public float Volume { get; set; } = 1f;
 
+        /// <summary>
+        /// 読み上げが完了(無効設定/空文字での即終了、合成失敗、再生完了、Stop()による中断のいずれか)したときに発火する。
+        /// ハンズフリー会話モードが「キャラクターの発話が終わったら聞き取りを再開する」ために使う
+        /// </summary>
+        public event Action PlaybackFinished;
+
         public SpeechPlayer(LLMChatSettings settings)
         {
             this.settings = settings;
@@ -30,7 +36,10 @@ namespace VPet.Mod.LLMChat.Voice
         public void Speak(string text)
         {
             if (settings == null || !settings.VoiceEnabled || string.IsNullOrWhiteSpace(text))
+            {
+                PlaybackFinished?.Invoke();
                 return;
+            }
 
             Volume = Math.Clamp(settings.VoiceVolumePercent / 100f, 0f, 1f);
 
@@ -100,7 +109,10 @@ namespace VPet.Mod.LLMChat.Voice
             {
                 var wav = await synthesize(cancellationToken).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
+                {
+                    PlaybackFinished?.Invoke();
                     return;
+                }
                 Play(wav);
                 onSuccess?.Invoke();
             }
@@ -109,6 +121,7 @@ namespace VPet.Mod.LLMChat.Voice
                 // 通常の読み上げ(Speak)ではエンジン未起動・接続失敗等でチャット自体を止めたくないため黙って諦めるが、
                 // 試し読み(テストボタン)はエラー原因を確認する目的なのでonError経由で呼び出し元に伝える
                 onError?.Invoke(ex.Message);
+                PlaybackFinished?.Invoke();
             }
         }
 
@@ -120,6 +133,7 @@ namespace VPet.Mod.LLMChat.Voice
             var output = new WaveOutEvent();
             output.Init(waveStream);
             output.Volume = Math.Clamp(Volume, 0f, 1f);
+            output.PlaybackStopped += (s, e) => PlaybackFinished?.Invoke();
 
             lock (playbackLock)
             {

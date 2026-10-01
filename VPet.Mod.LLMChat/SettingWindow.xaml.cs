@@ -142,6 +142,7 @@ namespace VPet.Mod.LLMChat
             cbVoiceInputEnabled.IsChecked = settings.VoiceInputEnabled;
             cbVoiceInputAutoSend.IsChecked = settings.VoiceInputAutoSend;
             cbMicSoundEnabled.IsChecked = settings.MicSoundEnabled;
+            cbHandsFreeModeEnabled.IsChecked = settings.HandsFreeModeEnabled;
             foreach (ComboBoxItem item in cbSttProvider.Items)
             {
                 if ((string)item.Tag == settings.SttProvider.ToString())
@@ -369,6 +370,7 @@ namespace VPet.Mod.LLMChat
             settings.VoiceInputEnabled = cbVoiceInputEnabled.IsChecked == true;
             settings.VoiceInputAutoSend = cbVoiceInputAutoSend.IsChecked == true;
             settings.MicSoundEnabled = cbMicSoundEnabled.IsChecked == true;
+            settings.HandsFreeModeEnabled = cbHandsFreeModeEnabled.IsChecked == true;
             settings.SttProvider = SelectedSttProvider;
             if (!string.IsNullOrWhiteSpace(tbSttEndpoint.Text))
                 settings.VoiceInputEndpoint = tbSttEndpoint.Text.Trim();

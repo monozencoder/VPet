@@ -23,6 +23,8 @@ namespace VPet.Mod.LLMChat
         private readonly SpeechPlayer voicePlayer;
         private AudioRecorder recorder;
         private bool isRecording;
+        private ContinuousVoiceListener handsFreeListener;
+        private bool handsFreeMuted;
         private CancellationTokenSource activeRequestCts;
         private bool proactiveNotifiedForCurrentFailureStreak;
         private string lastProactiveError;
@@ -38,7 +40,11 @@ namespace VPet.Mod.LLMChat
         {
             this.plugin = plugin;
             voicePlayer = new SpeechPlayer(plugin.Settings);
+            // キャラクターの発話が終わったら(無効設定での即終了/合成失敗/再生完了/中断のいずれでも)
+            // ハンズフリー会話モードの聞き取りを再開する
+            voicePlayer.PlaybackFinished += () => Dispatcher.BeginInvoke(new Action(ResumeHandsFreeListeningIfActive));
             UpdateMicButtonVisibility();
+            UpdateHandsFreeMode();
             // 右クリック等でツールバー(この入力欄を含む)が表示されたら、自動で入力欄にフォーカスする
             IsVisibleChanged += LLMTalkBox_IsVisibleChanged;
 
@@ -55,6 +61,125 @@ namespace VPet.Mod.LLMChat
         public void UpdateMicButtonVisibility()
         {
             btnMic.Visibility = plugin.Settings.VoiceInputEnabled ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// 設定のハンズフリー会話モードフラグに応じて、常時聞き取り用のリスナーを開始/停止する。
+        /// 設定画面を閉じた後にも呼ばれるため、既に意図した状態ならデバイスの再起動は行わない
+        /// </summary>
+        public void UpdateHandsFreeMode()
+        {
+            var shouldRun = plugin.Settings.VoiceInputEnabled && plugin.Settings.HandsFreeModeEnabled;
+            if (shouldRun)
+            {
+                if (handsFreeListener == null)
+                {
+                    handsFreeListener = new ContinuousVoiceListener(plugin.Settings);
+                    handsFreeListener.SegmentReady += OnHandsFreeSegmentReady;
+                    handsFreeListener.ListeningStateChanged += UpdateHandsFreeMicIcon;
+                    handsFreeMuted = false;
+                    try
+                    {
+                        handsFreeListener.Start();
+                    }
+                    catch (Exception ex)
+                    {
+                        handsFreeListener = null;
+                        DisplayThinkToSayRnd($"マイクを開始できませんでした: {ex.Message}");
+                        return;
+                    }
+                }
+                UpdateHandsFreeMicIcon();
+            }
+            else if (handsFreeListener != null)
+            {
+                handsFreeListener.Stop();
+                handsFreeListener = null;
+            }
+        }
+
+        private const string HandsFreeListeningIcon = "👂";
+        private const string HandsFreeRecordingIcon = "🔴";
+        private const string HandsFreeMutedIcon = "🔇";
+
+        /// <summary>ハンズフリーモード中のマイクボタンの見た目を、現在の聞き取り状態に合わせて更新する</summary>
+        private void UpdateHandsFreeMicIcon()
+        {
+            if (handsFreeListener == null)
+                return;
+            if (handsFreeMuted)
+            {
+                btnMic.Content = HandsFreeMutedIcon;
+                btnMic.ToolTip = "ミュート中(クリックで聞き取り再開)";
+            }
+            else if (handsFreeListener.IsSpeechActive)
+            {
+                btnMic.Content = HandsFreeRecordingIcon;
+                btnMic.ToolTip = "聞き取り中...";
+            }
+            else
+            {
+                btnMic.Content = HandsFreeListeningIcon;
+                btnMic.ToolTip = "話しかけると自動で聞き取ります(クリックでミュート)";
+            }
+        }
+
+        /// <summary>ハンズフリーモードが有効かつユーザーがミュートしていなければ、聞き取りを再開する</summary>
+        private void ResumeHandsFreeListeningIfActive()
+        {
+            if (handsFreeListener == null || handsFreeMuted)
+                return;
+            handsFreeListener.Resume();
+            UpdateHandsFreeMicIcon();
+        }
+
+        /// <summary>
+        /// ユーザーの発話区間が検出されるたびに呼ばれる。音声認識してそのまま自動送信する。
+        /// NAudioはWaveInEvent開始時のSynchronizationContextを捕捉して発火するため、
+        /// Start()をUIスレッドから呼んでいる限りこのメソッドもUIスレッド上で実行される
+        /// </summary>
+        private async void OnHandsFreeSegmentReady(byte[] wav)
+        {
+            // LLM応答/TTS再生が終わるまでは、その間の物音を新しい発話として拾わないよう聞き取りを止めておく
+            handsFreeListener?.Pause();
+            UpdateHandsFreeMicIcon();
+
+            if (wav == null || wav.Length == 0)
+            {
+                ResumeHandsFreeListeningIfActive();
+                return;
+            }
+
+            var apiKey = CredentialStore.Load(LLMChatSettings.VoiceInputCredentialKey) ?? string.Empty;
+            if (plugin.Settings.SttProvider == SttProviderKind.OpenAi && string.IsNullOrEmpty(apiKey))
+            {
+                DisplayThinkToSayRnd("音声入力用のOpenAI APIキーが設定されていません(設定画面から登録してください)");
+                ResumeHandsFreeListeningIfActive();
+                return;
+            }
+
+            try
+            {
+                var endpoint = plugin.Settings.SttProvider == SttProviderKind.LocalServer ? plugin.Settings.VoiceInputEndpoint : null;
+                var transcriber = new WhisperTranscriber(apiKey, plugin.Settings.VoiceInputModel, endpoint);
+                var text = await transcriber.TranscribeAsync(wav, CancellationToken.None).ConfigureAwait(true);
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    // 物音等の誤検知で書き起こしが空になったケース。何も送らず聞き取りを再開する
+                    ResumeHandsFreeListeningIfActive();
+                    return;
+                }
+
+                tbTalk.Text = text.Trim();
+                // ハンズフリーは自動送信が前提の機能のため、通常のVoiceInputAutoSend設定によらず常に送信する
+                // (Responded()の返信/読み上げが完了すると、PlaybackFinished経由で聞き取りが再開される)
+                SubmitTalk();
+            }
+            catch (Exception ex)
+            {
+                DisplayThinkToSayRnd($"音声入力に失敗しました: {ex.Message}");
+                ResumeHandsFreeListeningIfActive();
+            }
         }
 
         private void LLMTalkBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -92,6 +217,9 @@ namespace VPet.Mod.LLMChat
                 sayInfo.FinishGenerate();
                 history.Add(new ChatMessage("assistant", reply));
                 PersistMemory();
+                // 読み上げが終わるまではハンズフリーの聞き取りを止め、キャラクター自身の声を拾わないようにする
+                // (再開はvoicePlayer.PlaybackFinished経由)
+                handsFreeListener?.Pause();
                 voicePlayer.Speak(reply);
             }
             catch (OperationCanceledException)
@@ -99,6 +227,7 @@ namespace VPet.Mod.LLMChat
                 // 新しいメッセージに割り込まれたので、返事を待たずに終わったこの発言は履歴から取り除く
                 sayInfo.FinishGenerate();
                 history.Remove(userMessage);
+                ResumeHandsFreeListeningIfActive();
             }
             catch (Exception ex)
             {
@@ -106,6 +235,7 @@ namespace VPet.Mod.LLMChat
                 sayInfo.FinishGenerate();
                 history.Remove(userMessage);
                 DisplayThinkToSayRnd($"エラーが発生しました: {ex.Message}");
+                ResumeHandsFreeListeningIfActive();
             }
             finally
             {
@@ -157,6 +287,7 @@ namespace VPet.Mod.LLMChat
                 var reply = await provider.ChatStreamAsync(BuildSystemPromptWithMemory(), history, _ => { }, cts.Token).ConfigureAwait(true);
                 history.Add(new ChatMessage("assistant", reply));
                 PersistMemory();
+                handsFreeListener?.Pause();
                 voicePlayer.Speak(reply);
                 DisplayThinkToSayRnd(reply);
                 lastProactiveError = null;
@@ -168,6 +299,7 @@ namespace VPet.Mod.LLMChat
                 history.Remove(userMessage);
                 lastProactiveError = ex.Message;
                 lastProactiveErrorTime = DateTime.Now;
+                ResumeHandsFreeListeningIfActive();
                 if (!proactiveNotifiedForCurrentFailureStreak)
                 {
                     proactiveNotifiedForCurrentFailureStreak = true;
@@ -193,6 +325,7 @@ namespace VPet.Mod.LLMChat
             {
                 plugin.Settings.Save();
                 UpdateMicButtonVisibility();
+                UpdateHandsFreeMode();
             }
             if (window.MemoryCleared)
             {
@@ -201,9 +334,23 @@ namespace VPet.Mod.LLMChat
             }
         }
 
-        /// <summary>マイクボタン押下時: 録音の開始/停止をトグルする</summary>
+        /// <summary>
+        /// マイクボタン押下時。ハンズフリー会話モードが有効な場合は聞き取りのミュート/解除をトグルし、
+        /// それ以外は従来通り手動録音の開始/停止をトグルする
+        /// </summary>
         protected override void OnMicClick(object sender, RoutedEventArgs e)
         {
+            if (handsFreeListener != null)
+            {
+                handsFreeMuted = !handsFreeMuted;
+                if (handsFreeMuted)
+                    handsFreeListener.Pause();
+                else
+                    handsFreeListener.Resume();
+                UpdateHandsFreeMicIcon();
+                return;
+            }
+
             if (isRecording)
                 StopRecordingAndTranscribe();
             else

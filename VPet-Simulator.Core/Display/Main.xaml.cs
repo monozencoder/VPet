@@ -404,23 +404,49 @@ namespace VPet_Simulator.Core
         /// 放开拖拽后, 该时间内再次按下可以直接继续拖拽, 无需等待长按判定
         /// </summary>
         const double QuickRegrabWindowMs = 500;
+        /// <summary>
+        /// 按下后移动超过该距离(屏幕像素)时, 不等待长按判定直接开始拖拽
+        /// </summary>
+        const double DragStartDistance = 6;
+        /// <summary>
+        /// 按下时的屏幕位置
+        /// </summary>
+        Point pressStartScreenPoint;
+        /// <summary>
+        /// 提前结束长按等待 (移动开始拖拽/松开鼠标)
+        /// </summary>
+        ManualResetEventSlim pressWaitCancel;
+        /// <summary>
+        /// 本次按下是否因移动而提前结束长按等待 (=想要拖拽)
+        /// </summary>
+        volatile bool pressMoveTriggered;
         private void MainGrid_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             isPress = true;
             CountNomal = 0;
             bool quickRegrab = (DateTime.Now - lastRaiseReleaseTime).TotalMilliseconds < QuickRegrabWindowMs;
+            pressStartScreenPoint = MainGrid.PointToScreen(e.GetPosition(MainGrid));
+            pressMoveTriggered = false;
+            var waitCancel = new ManualResetEventSlim(false);
+            pressWaitCancel = waitCancel;
             Task.Run(() =>
             {
                 var pth = DateTime.Now.Ticks;
                 presstime = pth;
                 if (!quickRegrab)
-                    Thread.Sleep(Core.Controller.PressLength);
+                    waitCancel.Wait(Core.Controller.PressLength);
                 Point mp = default;
                 Dispatcher.BeginInvoke(new Action(() => mp = Mouse.GetPosition(MainGrid))).Wait();
                 //mp = new Point(mp.X * Core.Controller.ZoomRatio, mp.Y * Core.Controller.ZoomRatio);
                 if (isPress && presstime == pth)
                 {//历遍长按事件
                     LastInteractionTime = DateTime.Now;
+                    var dt = DisplayType.Type;
+                    if (pressMoveTriggered || dt == GraphType.Raised_Static || dt == GraphType.Raised_Dynamic)
+                    {//按住移动(想要拖拽) 或 落地(摔倒)动画中: 不受提起判定区域限制, 直接提起
+                        Dispatcher.Invoke(DisplayRaised);
+                        return;
+                    }
                     foreach (var x in Core.TouchEvent)
                     {
                         if (x.IsPress == true && x.Touch(mp) && x.DoAction())
@@ -431,6 +457,8 @@ namespace VPet_Simulator.Core
                 else
                 {//历遍点击事件
                     LastInteractionTime = DateTime.Now;
+                    if (isRaisedDragging)
+                        return;//点击判定前已开始新的拖拽, 不再处理点击(避免CleanState打断拖拽)
                     foreach (var x in Core.TouchEvent)
                     {
                         if (x.IsPress == false && x.Touch(mp) && x.DoAction())
@@ -451,8 +479,10 @@ namespace VPet_Simulator.Core
         private void MainGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             isPress = false;
-            if (DisplayType.Type.ToString().StartsWith("Raised"))
+            pressWaitCancel?.Set();
+            if (isRaisedDragging || DisplayType.Type.ToString().StartsWith("Raised"))
             {
+                isRaisedDragging = false;
                 MainGrid.MouseMove -= MainGrid_MouseWave;
                 MainGrid.MouseMove -= MainGrid_MouseMove;
                 MainGrid.MouseMove += MainGrid_MouseWave;
@@ -473,13 +503,15 @@ namespace VPet_Simulator.Core
                     SmartMoveTimer.Start();
                 }
             }
-            ((UIElement)e.Source).ReleaseMouseCapture();
+            MainGrid.ReleaseMouseCapture();
         }
 
         private void MainGrid_MouseMove(object sender, MouseEventArgs e)
         {
-            if (!((UIElement)e.Source).CaptureMouse() || !isPress)
+            //注意: 不能对e.Source(动画Image)捕获, 动画切换时该Image会被隐藏导致捕获失败而误判为松开
+            if (!MainGrid.CaptureMouse() || !isPress)
             {
+                isRaisedDragging = false;
                 MainGrid.MouseMove -= MainGrid_MouseWave;
                 MainGrid.MouseMove -= MainGrid_MouseMove;
                 MainGrid.MouseMove += MainGrid_MouseWave;
@@ -540,7 +572,20 @@ namespace VPet_Simulator.Core
         private void MainGrid_MouseWave(object sender, MouseEventArgs e)
         {
             if (e.LeftButton == MouseButtonState.Pressed)
+            {//按住移动: 超过距离则立即结束长按等待, 开始拖拽
+                var wc = pressWaitCancel;
+                if (isPress && wc != null && !wc.IsSet)
+                {
+                    var sp = MainGrid.PointToScreen(e.GetPosition(MainGrid));
+                    if (Math.Abs(sp.X - pressStartScreenPoint.X) > DragStartDistance
+                        || Math.Abs(sp.Y - pressStartScreenPoint.Y) > DragStartDistance)
+                    {
+                        pressMoveTriggered = true;
+                        wc.Set();
+                    }
+                }
                 return;
+            }
             isPress = false;
             if (rasetype >= 0 || State != WorkingState.Nomal)
                 return;
